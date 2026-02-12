@@ -11,6 +11,8 @@ const state = {
 // INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  initMobileMenu();
   initNav();
   initExport();
   initBreachTabs();
@@ -18,7 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
   initScrollReveal();
   initPasswordGenerator();
+
+  // Firebase (guarded - works without it)
+  if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== 'YOUR_API_KEY') {
+    if (typeof initAuth === 'function') initAuth();
+    if (typeof initFirestore === 'function') initFirestore();
+  }
+
   fetchIPInfo();
+  dismissLoadingScreen();
 });
 
 function initNav() {
@@ -782,6 +792,79 @@ function esc(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+// ============================================================
+// THEME
+// ============================================================
+function initTheme() {
+  // Theme already set by inline script in <head>, but bind toggle
+  document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme') || 'dark';
+  const next = current === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  localStorage.setItem('netscope-theme', next);
+  // Sync to Firebase if logged in
+  if (typeof currentUser !== 'undefined' && currentUser && typeof saveUserPreferences === 'function') {
+    saveUserPreferences({ theme: next });
+  }
+}
+
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  // Update mobile menu label
+  const label = document.getElementById('mobile-theme-label');
+  if (label) label.textContent = theme === 'dark' ? 'Light Mode' : 'Dark Mode';
+}
+
+// ============================================================
+// MOBILE MENU
+// ============================================================
+function initMobileMenu() {
+  const hamburger = document.getElementById('hamburger');
+  const menu = document.getElementById('mobile-menu');
+  if (!hamburger || !menu) return;
+
+  hamburger.addEventListener('click', () => {
+    const isOpen = menu.classList.toggle('open');
+    hamburger.classList.toggle('open');
+    hamburger.setAttribute('aria-expanded', isOpen);
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+  });
+
+  // Close menu when a nav link is clicked
+  menu.querySelectorAll('.mobile-nav-link[href]').forEach(link => {
+    link.addEventListener('click', () => {
+      menu.classList.remove('open');
+      hamburger.classList.remove('open');
+      hamburger.setAttribute('aria-expanded', 'false');
+      document.body.style.overflow = '';
+    });
+  });
+
+  // Mobile theme toggle
+  document.getElementById('mobile-theme-toggle')?.addEventListener('click', toggleTheme);
+}
+
+// ============================================================
+// LOADING SCREEN
+// ============================================================
+function dismissLoadingScreen() {
+  const fontPromise = document.fonts ? document.fonts.ready : Promise.resolve();
+  const timeout = new Promise(resolve => setTimeout(resolve, 3000));
+
+  Promise.race([fontPromise, timeout]).then(() => {
+    setTimeout(() => {
+      const screen = document.getElementById('loading-screen');
+      if (screen) {
+        screen.classList.add('hidden');
+        screen.addEventListener('transitionend', () => screen.remove(), { once: true });
+      }
+    }, 300);
+  });
 }
 
 // ============================================================
