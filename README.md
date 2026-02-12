@@ -34,7 +34,6 @@
 - [About](#about)
 - [Features](#features)
 - [Tech Stack](#tech-stack)
-- [Project Structure](#project-structure)
 - [Getting Started](#getting-started)
 - [Deployment](#deployment)
 - [Privacy](#privacy)
@@ -99,37 +98,6 @@ Pure HTML, CSS, and JavaScript. The repo root **is** the deployable output — n
 | [Firebase SDK](https://firebase.google.com/) | 10.12.0 | Auth + Firestore (compat) |
 | [Inter](https://rsms.me/inter/) | Variable | UI typeface |
 | [JetBrains Mono](https://www.jetbrains.com/lp/mono/) | Variable | Monospace typeface |
-
-## Project Structure
-
-```
-NetScope/
-├── .github/
-│   └── workflows/
-│       └── static.yml              # GitHub Pages deployment
-├── css/
-│   └── style.css                   # All styles (dark + light themes)
-├── docs/
-│   └── FIREBASE_SETUP.md           # Firebase configuration guide
-├── images/
-│   ├── bg-pattern.svg              # Background dot pattern
-│   ├── favicon.svg                 # SVG favicon
-│   ├── logo-dark.svg               # Logo for dark theme
-│   ├── logo-icon.svg               # Icon-only logo
-│   ├── logo-light.svg              # Logo for light theme
-│   └── social-preview.png          # Open Graph preview image
-├── js/
-│   ├── app.js                      # Core application logic + tab navigation
-│   ├── auth.js                     # Auth gate, Google/GitHub/email sign-in
-│   ├── firebase-config.js          # Firebase project config
-│   └── firestore.js                # Cloud save/load logic
-├── .gitignore
-├── about.html                      # About page
-├── app.html                        # Main app (auth gate + dashboard)
-├── index.html                      # Landing page
-├── LICENSE                         # MIT
-└── README.md
-```
 
 ## Getting Started
 
