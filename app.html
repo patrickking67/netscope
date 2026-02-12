@@ -54,12 +54,14 @@
           <div class="user-dropdown" id="user-dropdown">
             <div class="user-dropdown-header"><span id="user-name"></span></div>
             <button class="user-dropdown-item" id="btn-my-results"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>My Results</button>
+            <button class="user-dropdown-item" id="btn-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
+            <div class="user-dropdown-divider"></div>
             <button class="user-dropdown-item" id="btn-logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out</button>
           </div>
         </div>
-        <button class="btn btn--run-all" id="btn-run-all" title="Run All Tests" style="display:none;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-          Run All
+        <button class="btn btn--run-all" id="btn-full-scan" title="Full Security Scan" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Full Scan
         </button>
         <button class="export-trigger" id="export-trigger" title="Export Results" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
@@ -84,7 +86,6 @@
         <button class="mobile-nav-link" data-tab="breach-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Breach Check</button>
         <button class="mobile-nav-link" data-tab="password-gen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Passwords</button>
         <button class="mobile-nav-link" data-tab="dns-security"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>DNS & Security</button>
-        <button class="mobile-nav-link" data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
       </div>
       <div class="mobile-menu-divider"></div>
       <button class="mobile-nav-link" id="mobile-theme-toggle">
@@ -92,6 +93,7 @@
         <svg class="theme-icon theme-icon--light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
         <span id="mobile-theme-label">Light Mode</span>
       </button>
+      <button class="mobile-nav-link" id="mobile-btn-settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
       <button class="mobile-nav-link" id="mobile-btn-login"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Sign In</button>
       <div class="mobile-user-info" id="mobile-user-info" style="display:none;">
         <div class="mobile-nav-link mobile-nav-link--static"><img class="user-avatar-sm" id="mobile-user-avatar" src="" alt="" width="22" height="22"><span id="mobile-user-name"></span></div>
@@ -249,10 +251,6 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
           <span>DNS & Security</span>
         </button>
-        <button class="tab-bar-item" data-tab="settings">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span>Settings</span>
-        </button>
         <div class="tab-bar-indicator" id="tab-bar-indicator"></div>
       </div>
     </div>
@@ -399,57 +397,6 @@
         </section>
       </div>
 
-      <!-- Settings -->
-      <div class="tab-panel" id="panel-settings" data-panel="settings">
-        <section class="card card--wide">
-          <div class="card-header">
-            <div class="card-icon card-icon--orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
-            <div><h2 class="card-title">Settings</h2><p class="card-subtitle">Account and preferences</p></div>
-          </div>
-
-          <div class="settings-section">
-            <h3 class="settings-section-title">Account</h3>
-            <div id="settings-guest-info">
-              <p class="settings-guest-text">You're using NetScope as a guest. Sign in to save your results and sync them across devices.</p>
-              <button class="btn btn--primary" id="settings-sign-in">Sign In</button>
-            </div>
-            <div id="settings-user-info" style="display:none;">
-              <div class="settings-user-row"><span class="settings-label">Email</span><span class="settings-value" id="settings-email">--</span></div>
-              <div class="settings-user-row"><span class="settings-label">Display Name</span><span class="settings-value" id="settings-display-name">--</span></div>
-              <div class="settings-user-row"><span class="settings-label">Sign-in Method</span><span class="settings-value" id="settings-provider">--</span></div>
-              <div class="settings-user-row"><span class="settings-label">Account Created</span><span class="settings-value" id="settings-created">--</span></div>
-            </div>
-          </div>
-
-          <div class="settings-section">
-            <h3 class="settings-section-title">Appearance</h3>
-            <div class="settings-row">
-              <div><span class="settings-label">Theme</span><span class="settings-description">Toggle between dark and light mode</span></div>
-              <button class="btn btn--ghost btn--sm" id="settings-theme-toggle">
-                <svg class="theme-icon theme-icon--dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-                <svg class="theme-icon theme-icon--light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-                <span id="settings-theme-label">Switch to Light</span>
-              </button>
-            </div>
-          </div>
-
-          <div class="settings-section">
-            <h3 class="settings-section-title">Data</h3>
-            <div class="settings-row">
-              <div><span class="settings-label">Clear Local Data</span><span class="settings-description">Remove saved theme and session preferences from this browser</span></div>
-              <button class="btn btn--ghost btn--sm" id="settings-clear-data">Clear</button>
-            </div>
-          </div>
-
-          <div class="settings-section" id="settings-signout-section" style="display:none;">
-            <button class="btn btn--danger btn--full" id="settings-sign-out">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              Sign Out
-            </button>
-          </div>
-        </section>
-      </div>
-
     </main>
   </div>
 
@@ -479,11 +426,116 @@
     </div>
   </div>
 
+  <!-- Settings Panel -->
+  <div class="settings-panel" id="settings-panel">
+    <div class="settings-panel-inner">
+      <div class="settings-panel-header">
+        <h3>Settings</h3>
+        <button class="settings-panel-close" id="settings-panel-close">&times;</button>
+      </div>
+      <div class="settings-panel-body">
+        <div class="settings-section">
+          <h3 class="settings-section-title">Account</h3>
+          <div id="settings-guest-info">
+            <p class="settings-guest-text">You're using NetScope as a guest. Sign in to save and sync results.</p>
+            <button class="btn btn--primary" id="settings-sign-in">Sign In</button>
+          </div>
+          <div id="settings-user-info" style="display:none;">
+            <div class="settings-user-row"><span class="settings-label">Email</span><span class="settings-value" id="settings-email">--</span></div>
+            <div class="settings-user-row"><span class="settings-label">Display Name</span><span class="settings-value" id="settings-display-name">--</span></div>
+            <div class="settings-user-row"><span class="settings-label">Sign-in Method</span><span class="settings-value" id="settings-provider">--</span></div>
+            <div class="settings-user-row"><span class="settings-label">Account Created</span><span class="settings-value" id="settings-created">--</span></div>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3 class="settings-section-title">Appearance</h3>
+          <div class="settings-row">
+            <div><span class="settings-label">Theme</span><span class="settings-description">Toggle between dark and light mode</span></div>
+            <button class="btn btn--ghost btn--sm" id="settings-theme-toggle">
+              <svg class="theme-icon theme-icon--dark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+              <svg class="theme-icon theme-icon--light" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+              <span id="settings-theme-label">Switch to Light</span>
+            </button>
+          </div>
+        </div>
+        <div class="settings-section">
+          <h3 class="settings-section-title">Data</h3>
+          <div class="settings-row">
+            <div><span class="settings-label">Clear Local Data</span><span class="settings-description">Remove saved preferences from this browser</span></div>
+            <button class="btn btn--ghost btn--sm" id="settings-clear-data">Clear</button>
+          </div>
+        </div>
+        <div class="settings-section" id="settings-signout-section" style="display:none;">
+          <button class="btn btn--danger btn--full" id="settings-sign-out">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Scan Overlay -->
+  <div class="fullscan-overlay" id="fullscan-overlay" style="display:none;">
+    <div class="fullscan-inner">
+      <div class="fullscan-header">
+        <div class="fullscan-shield">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="48" height="48"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10" stroke-width="2"/></svg>
+        </div>
+        <h2 class="fullscan-title">Full Security Scan</h2>
+        <p class="fullscan-subtitle" id="fullscan-subtitle">Initializing scan...</p>
+      </div>
+      <div class="fullscan-steps">
+        <div class="fullscan-step" id="fs-ip">
+          <div class="fullscan-step-num">1</div>
+          <div class="fullscan-step-info">
+            <span class="fullscan-step-name">IP & Geolocation</span>
+            <span class="fullscan-step-status" id="fs-ip-status">Waiting</span>
+          </div>
+          <div class="fullscan-step-check" id="fs-ip-check"></div>
+        </div>
+        <div class="fullscan-step" id="fs-speed">
+          <div class="fullscan-step-num">2</div>
+          <div class="fullscan-step-info">
+            <span class="fullscan-step-name">Speed Test</span>
+            <span class="fullscan-step-status" id="fs-speed-status">Waiting</span>
+          </div>
+          <div class="fullscan-step-check" id="fs-speed-check"></div>
+        </div>
+        <div class="fullscan-step" id="fs-password">
+          <div class="fullscan-step-num">3</div>
+          <div class="fullscan-step-info">
+            <span class="fullscan-step-name">Password Generation</span>
+            <span class="fullscan-step-status" id="fs-password-status">Waiting</span>
+          </div>
+          <div class="fullscan-step-check" id="fs-password-check"></div>
+        </div>
+        <div class="fullscan-step" id="fs-dns">
+          <div class="fullscan-step-num">4</div>
+          <div class="fullscan-step-info">
+            <span class="fullscan-step-name">DNS & Security</span>
+            <span class="fullscan-step-status" id="fs-dns-status">Waiting</span>
+          </div>
+          <div class="fullscan-step-check" id="fs-dns-check"></div>
+        </div>
+      </div>
+      <div class="fullscan-bar-wrap">
+        <div class="fullscan-bar"><div class="fullscan-bar-fill" id="fullscan-bar-fill"></div></div>
+        <span class="fullscan-bar-text" id="fullscan-bar-text">0%</span>
+      </div>
+      <div class="fullscan-actions" id="fullscan-actions">
+        <button class="btn btn--ghost" id="fullscan-cancel">Cancel</button>
+      </div>
+      <div class="fullscan-done" id="fullscan-done" style="display:none;">
+        <button class="btn btn--primary" id="fullscan-view-results">View Results</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <footer class="footer">
     <p class="footer-copy">&copy; 2026 Patrick King &middot; Licensed under <a href="https://github.com/patrickking67/NetScope/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a></p>
-    <p class="footer-note">All checks run client-side. No data is stored or transmitted beyond the listed APIs.</p>
     <div class="footer-links">
       <a href="index.html" class="footer-link">Home</a>
       <a href="about.html" class="footer-link">About</a>

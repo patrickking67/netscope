@@ -46,6 +46,7 @@ function initAuth() {
   document.getElementById('btn-logout')?.addEventListener('click', handleSignOut);
   document.getElementById('user-avatar-btn')?.addEventListener('click', toggleUserDropdown);
   document.getElementById('btn-my-results')?.addEventListener('click', () => { openResultsPanel(); closeUserDropdown(); });
+  document.getElementById('btn-settings')?.addEventListener('click', () => { if (typeof openSettingsPanel === 'function') openSettingsPanel(); closeUserDropdown(); });
   document.getElementById('btn-save-cloud')?.addEventListener('click', () => { if (typeof saveResults === 'function') saveResults(); });
 
   // Mobile
@@ -56,7 +57,8 @@ function initAuth() {
     if (typeof showAuthGate === 'function') showAuthGate();
   });
   document.getElementById('mobile-btn-logout')?.addEventListener('click', handleSignOut);
-  document.getElementById('mobile-btn-results')?.addEventListener('click', openResultsPanel);
+  document.getElementById('mobile-btn-results')?.addEventListener('click', () => { openResultsPanel(); closeMobileMenu(); });
+  document.getElementById('mobile-btn-settings')?.addEventListener('click', () => { if (typeof openSettingsPanel === 'function') openSettingsPanel(); closeMobileMenu(); });
 
   // Close dropdown on outside click
   document.addEventListener('click', e => {

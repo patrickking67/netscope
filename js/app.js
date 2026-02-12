@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPasswordToggle();
   initEventListeners();
   initPasswordGenerator();
+  initFullScan();
   initSettings();
 
   // Firebase (guarded - works without it)
@@ -107,13 +108,13 @@ function updateTabIndicator() {
 function showDashboard() {
   const authGate = document.getElementById('auth-gate');
   const dashboard = document.getElementById('dashboard');
-  const runAll = document.getElementById('btn-run-all');
+  const fullScanBtn = document.getElementById('btn-full-scan');
   const exportTrigger = document.getElementById('export-trigger');
   const mobileToolLinks = document.getElementById('mobile-tool-links');
 
   if (authGate) authGate.style.display = 'none';
   if (dashboard) dashboard.style.display = '';
-  if (runAll) runAll.style.display = '';
+  if (fullScanBtn) fullScanBtn.style.display = '';
   if (exportTrigger) exportTrigger.style.display = '';
   if (mobileToolLinks) mobileToolLinks.style.display = '';
 
@@ -130,13 +131,13 @@ function showDashboard() {
 function showAuthGate() {
   const authGate = document.getElementById('auth-gate');
   const dashboard = document.getElementById('dashboard');
-  const runAll = document.getElementById('btn-run-all');
+  const fullScanBtn = document.getElementById('btn-full-scan');
   const exportTrigger = document.getElementById('export-trigger');
   const mobileToolLinks = document.getElementById('mobile-tool-links');
 
   if (authGate) authGate.style.display = '';
   if (dashboard) dashboard.style.display = 'none';
-  if (runAll) runAll.style.display = 'none';
+  if (fullScanBtn) fullScanBtn.style.display = 'none';
   if (exportTrigger) exportTrigger.style.display = 'none';
   if (mobileToolLinks) mobileToolLinks.style.display = 'none';
 }
@@ -1088,9 +1089,6 @@ function initPasswordGenerator() {
 
   document.getElementById('btn-generate').addEventListener('click', generatePassword);
   document.getElementById('pwgen-copy').addEventListener('click', copyPassword);
-
-  // Run All button
-  document.getElementById('btn-run-all').addEventListener('click', runAll);
 }
 
 function generatePassword() {
@@ -1158,32 +1156,119 @@ function copyPassword() {
 }
 
 // ============================================================
-// RUN ALL
+// FULL SECURITY SCAN
 // ============================================================
-async function runAll() {
-  const btn = document.getElementById('btn-run-all');
-  btn.disabled = true;
-  btn.textContent = 'Running...';
+let fullScanRunning = false;
+let fullScanCancelled = false;
 
-  // IP is already auto-fetched on load. Run the others.
-  const tasks = [];
+function initFullScan() {
+  document.getElementById('btn-full-scan')?.addEventListener('click', startFullScan);
+  document.getElementById('fullscan-cancel')?.addEventListener('click', cancelFullScan);
+  document.getElementById('fullscan-view-results')?.addEventListener('click', closeFullScan);
+}
 
-  // Speed test
-  if (!speedRunning) tasks.push(runSpeedTest());
+function setFsStep(id, status, text) {
+  const step = document.getElementById(id);
+  const statusEl = document.getElementById(id + '-status');
+  if (!step) return;
+  step.className = 'fullscan-step' + (status === 'running' ? ' running' : status === 'done' ? ' done' : '');
+  if (statusEl) statusEl.textContent = text;
+}
 
-  // Generate a password
-  generatePassword();
+function setFsProgress(pct) {
+  const fill = document.getElementById('fullscan-bar-fill');
+  const text = document.getElementById('fullscan-bar-text');
+  if (fill) fill.style.width = pct + '%';
+  if (text) text.textContent = Math.round(pct) + '%';
+}
 
-  // Wait for all async tasks
-  await Promise.allSettled(tasks);
+async function startFullScan() {
+  if (fullScanRunning) return;
+  fullScanRunning = true;
+  fullScanCancelled = false;
 
-  btn.disabled = false;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run All';
-  showToast('All tests complete');
+  const overlay = document.getElementById('fullscan-overlay');
+  const subtitle = document.getElementById('fullscan-subtitle');
+  const actions = document.getElementById('fullscan-actions');
+  const done = document.getElementById('fullscan-done');
+
+  // Reset
+  ['fs-ip', 'fs-speed', 'fs-password', 'fs-dns'].forEach(id => setFsStep(id, '', 'Waiting'));
+  setFsProgress(0);
+  if (actions) actions.style.display = '';
+  if (done) done.style.display = 'none';
+  if (subtitle) subtitle.textContent = 'Initializing scan...';
+  if (overlay) overlay.style.display = '';
+
+  try {
+    // 1. IP & Geolocation
+    if (fullScanCancelled) return;
+    setFsStep('fs-ip', 'running', 'Detecting IP...');
+    if (subtitle) subtitle.textContent = 'Detecting your IP and location...';
+    if (!ipFetched) {
+      ipFetched = true;
+      await fetchIPInfo();
+    }
+    setFsStep('fs-ip', 'done', 'Complete');
+    setFsProgress(25);
+
+    // 2. Speed Test
+    if (fullScanCancelled) return;
+    setFsStep('fs-speed', 'running', 'Testing connection...');
+    if (subtitle) subtitle.textContent = 'Measuring network speed...';
+    if (!speedRunning) await runSpeedTest();
+    setFsStep('fs-speed', 'done', 'Complete');
+    setFsProgress(60);
+
+    // 3. Password Generation
+    if (fullScanCancelled) return;
+    setFsStep('fs-password', 'running', 'Generating...');
+    if (subtitle) subtitle.textContent = 'Generating secure password...';
+    generatePassword();
+    await new Promise(r => setTimeout(r, 500));
+    setFsStep('fs-password', 'done', 'Complete');
+    setFsProgress(80);
+
+    // 4. DNS (skip if no domain - just mark done)
+    if (fullScanCancelled) return;
+    setFsStep('fs-dns', 'running', 'Checking DNS...');
+    if (subtitle) subtitle.textContent = 'Scanning DNS security...';
+    const scanInput = document.getElementById('scan-input')?.value.trim();
+    if (scanInput) {
+      await runDNSScan();
+    } else {
+      await new Promise(r => setTimeout(r, 400));
+    }
+    setFsStep('fs-dns', 'done', scanInput ? 'Complete' : 'Skipped (no domain)');
+    setFsProgress(100);
+
+    // Done
+    if (subtitle) subtitle.textContent = 'Scan complete!';
+    if (actions) actions.style.display = 'none';
+    if (done) done.style.display = '';
+  } catch (err) {
+    console.error('Full scan error:', err);
+    if (subtitle) subtitle.textContent = 'Scan completed with partial results';
+    if (actions) actions.style.display = 'none';
+    if (done) done.style.display = '';
+  } finally {
+    fullScanRunning = false;
+  }
+}
+
+function cancelFullScan() {
+  fullScanCancelled = true;
+  fullScanRunning = false;
+  closeFullScan();
+}
+
+function closeFullScan() {
+  const overlay = document.getElementById('fullscan-overlay');
+  if (overlay) overlay.style.display = 'none';
 }
 
 // ============================================================
-// SETTINGS
+// SETTINGS PANEL
 // ============================================================
 function initSettings() {
   document.getElementById('settings-theme-toggle')?.addEventListener('click', toggleTheme);
@@ -1196,14 +1281,40 @@ function initSettings() {
   });
 
   document.getElementById('settings-sign-in')?.addEventListener('click', () => {
+    closeSettingsPanel();
     if (typeof showAuthGate === 'function') showAuthGate();
   });
 
   document.getElementById('settings-sign-out')?.addEventListener('click', () => {
+    closeSettingsPanel();
     if (typeof handleSignOut === 'function') handleSignOut();
   });
 
+  document.getElementById('settings-panel-close')?.addEventListener('click', closeSettingsPanel);
+
+  // Close on backdrop click
+  document.getElementById('settings-panel')?.addEventListener('click', e => {
+    if (e.target.id === 'settings-panel') closeSettingsPanel();
+  });
+
+  // Fallback settings triggers (work without Firebase)
+  document.getElementById('btn-settings')?.addEventListener('click', () => { openSettingsPanel(); });
+  document.getElementById('mobile-btn-settings')?.addEventListener('click', () => {
+    openSettingsPanel();
+    if (typeof closeMobileMenu === 'function') closeMobileMenu();
+  });
+
   updateSettingsThemeLabel();
+}
+
+function openSettingsPanel() {
+  document.getElementById('settings-panel')?.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeSettingsPanel() {
+  document.getElementById('settings-panel')?.classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 function updateSettingsThemeLabel() {
