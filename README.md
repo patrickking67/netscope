@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://patrickking67.github.io/NetScope/">
-    <img src="images/logo-dark.svg" alt="NetScope" height="60">
+    <img src="images/logo-light.svg" alt="NetScope" height="60">
   </a>
 </p>
 
