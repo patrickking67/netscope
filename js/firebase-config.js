@@ -4,10 +4,10 @@
  * These are client-side keys and safe to commit to a public repo.
  */
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyCtMD203viBTG30f2p4gJNCraBx9RvugvU",
+  authDomain: "netscope-df0ee.firebaseapp.com",
+  projectId: "netscope-df0ee",
+  storageBucket: "netscope-df0ee.firebasestorage.app",
+  messagingSenderId: "471360256962",
+  appId: "1:471360256962:web:2ca17c1d5880673ce0b45b"
 };
