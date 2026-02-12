@@ -316,45 +316,60 @@ function countryFlag(code) {
 // ============================================================
 let speedRunning = false;
 
+function setSpeedProgress(pct) {
+  const fill = document.getElementById('speed-progress-fill');
+  const text = document.getElementById('speed-progress-text');
+  if (fill) fill.style.width = Math.round(pct) + '%';
+  if (text) text.textContent = Math.round(pct) + '%';
+}
+
 async function runSpeedTest() {
   if (speedRunning) return;
   speedRunning = true;
   const btn = document.getElementById('btn-speed-test');
   const phase = document.getElementById('speed-phase');
   const ring = document.getElementById('gauge-ring');
+  const progressWrap = document.getElementById('speed-progress-wrap');
   btn.disabled = true;
   btn.textContent = 'Testing...';
   ring.classList.add('active');
   phase.classList.add('active');
+  if (progressWrap) progressWrap.style.display = '';
+  setSpeedProgress(0);
   resetGauge();
 
   try {
-    // LATENCY + JITTER
+    // LATENCY + JITTER (~10% of total time)
     phase.textContent = 'Testing latency...';
+    setSpeedProgress(2);
     const latency = await testLatency();
     state.speed.ping = latency.ping;
     state.speed.jitter = latency.jitter;
     animateNumber(document.getElementById('speed-ping'), latency.ping, 0);
     animateNumber(document.getElementById('speed-jitter'), latency.jitter, 1);
+    setSpeedProgress(15);
 
-    // DOWNLOAD (multi-connection, ~12s)
+    // DOWNLOAD (multi-connection, ~12s = ~42% of total)
     phase.textContent = 'Testing download...';
-    const dl = await testMultiDownload();
+    const dl = await testMultiDownload(pct => setSpeedProgress(15 + pct * 0.42));
     state.speed.download = dl;
     animateNumber(document.getElementById('speed-download'), dl, 1);
     setGauge(dl);
     animateNumber(document.getElementById('gauge-number'), dl, 1);
+    setSpeedProgress(57);
 
-    // UPLOAD (multi-connection, ~12s)
+    // UPLOAD (multi-connection, ~12s = ~42% of total)
     phase.textContent = 'Testing upload...';
-    const ul = await testMultiUpload();
+    const ul = await testMultiUpload(pct => setSpeedProgress(57 + pct * 0.42));
     state.speed.upload = ul;
     animateNumber(document.getElementById('speed-upload'), ul, 1);
+    setSpeedProgress(100);
 
     phase.textContent = 'Test complete';
   } catch (err) {
     console.error('Speed test error:', err);
     phase.textContent = 'Test finished with partial results';
+    setSpeedProgress(100);
   } finally {
     speedRunning = false;
     btn.disabled = false;
@@ -405,7 +420,7 @@ async function testCfAvailable() {
   } catch { return false; }
 }
 
-async function testMultiDownload() {
+async function testMultiDownload(onProgress) {
   const cfWorks = await testCfAvailable();
   if (!cfWorks) return await fallbackDownload();
 
@@ -430,6 +445,10 @@ async function testMultiDownload() {
         if (fetchDuration < 500) size = Math.min(size * 6, 25000000);
         else if (fetchDuration < 1500) size = Math.min(size * 3, 25000000);
         else if (fetchDuration < 3000) size = Math.min(Math.round(size * 1.5), 25000000);
+
+        // Report progress
+        const pct = Math.min((fetchEnd - testStart) / TOTAL_MS, 1) * 100;
+        if (onProgress) onProgress(pct);
 
         // Update gauge during measurement window
         if (fetchEnd - testStart > WARMUP_MS) {
@@ -484,7 +503,7 @@ async function fallbackDownload() {
   return bestSpeed;
 }
 
-async function testMultiUpload() {
+async function testMultiUpload(onProgress) {
   const CONNECTIONS = 4;
   const TOTAL_MS = 12000;
   const WARMUP_MS = 2000;
@@ -502,6 +521,10 @@ async function testMultiUpload() {
         const fetchEnd = performance.now();
         const fetchDuration = fetchEnd - fetchStart;
         transfers.push({ bytes: size, endTime: fetchEnd });
+
+        // Report progress
+        const pct = Math.min((fetchEnd - testStart) / TOTAL_MS, 1) * 100;
+        if (onProgress) onProgress(pct);
 
         if (fetchDuration < 500) size = Math.min(size * 6, 10000000);
         else if (fetchDuration < 1500) size = Math.min(size * 3, 10000000);
@@ -1387,7 +1410,7 @@ async function startFullScan() {
   const done = document.getElementById('fullscan-done');
 
   // Reset
-  ['fs-ip', 'fs-speed', 'fs-password', 'fs-dns'].forEach(id => setFsStep(id, '', 'Waiting'));
+  ['fs-ip', 'fs-speed', 'fs-breach', 'fs-dns'].forEach(id => setFsStep(id, '', 'Waiting'));
   setFsProgress(0);
   if (actions) actions.style.display = '';
   if (done) done.style.display = 'none';
@@ -1414,13 +1437,22 @@ async function startFullScan() {
     setFsStep('fs-speed', 'done', 'Complete');
     setFsProgress(60);
 
-    // 3. Password Generation
+    // 3. Breach Check (autofill email if signed in)
     if (fullScanCancelled) return;
-    setFsStep('fs-password', 'running', 'Generating...');
-    if (subtitle) subtitle.textContent = 'Generating secure password...';
-    generatePassword();
-    await new Promise(r => setTimeout(r, 500));
-    setFsStep('fs-password', 'done', 'Complete');
+    setFsStep('fs-breach', 'running', 'Checking breaches...');
+    if (subtitle) subtitle.textContent = 'Checking email breaches...';
+    const emailInput = document.getElementById('email-input');
+    const userEmail = (typeof currentUser !== 'undefined' && currentUser?.email) ? currentUser.email : '';
+    if (userEmail && emailInput && !emailInput.value.trim()) {
+      emailInput.value = userEmail;
+    }
+    if (emailInput && emailInput.value.trim()) {
+      await checkEmailBreach();
+      setFsStep('fs-breach', 'done', 'Complete');
+    } else {
+      await new Promise(r => setTimeout(r, 400));
+      setFsStep('fs-breach', 'done', 'Skipped (no email)');
+    }
     setFsProgress(80);
 
     // 4. DNS (skip if no domain - just mark done)

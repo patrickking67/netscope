@@ -311,6 +311,10 @@
                 <div class="gauge-center"><span class="gauge-number" id="gauge-number">--</span><span class="gauge-unit">Mbps</span></div>
               </div>
               <div class="speed-phase" id="speed-phase">Ready</div>
+              <div class="speed-progress-wrap" id="speed-progress-wrap" style="display:none;">
+                <div class="speed-progress-bar"><div class="speed-progress-fill" id="speed-progress-fill"></div></div>
+                <span class="speed-progress-text" id="speed-progress-text">0%</span>
+              </div>
             </div>
             <div class="speed-metrics">
               <div class="speed-metric"><div class="metric-icon metric-icon--ping"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><span class="metric-label">Ping</span><div class="metric-row"><span class="metric-value" id="speed-ping">--</span><span class="metric-unit">ms</span></div></div>
@@ -520,13 +524,13 @@
           </div>
           <div class="fullscan-step-check" id="fs-speed-check"></div>
         </div>
-        <div class="fullscan-step" id="fs-password">
+        <div class="fullscan-step" id="fs-breach">
           <div class="fullscan-step-num">3</div>
           <div class="fullscan-step-info">
-            <span class="fullscan-step-name">Password Generation</span>
-            <span class="fullscan-step-status" id="fs-password-status">Waiting</span>
+            <span class="fullscan-step-name">Breach Check</span>
+            <span class="fullscan-step-status" id="fs-breach-status">Waiting</span>
           </div>
-          <div class="fullscan-step-check" id="fs-password-check"></div>
+          <div class="fullscan-step-check" id="fs-breach-check"></div>
         </div>
         <div class="fullscan-step" id="fs-dns">
           <div class="fullscan-step-num">4</div>
