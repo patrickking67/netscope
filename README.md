@@ -203,5 +203,5 @@ Copyright (c) 2026 Patrick King
     <img src="images/logo-icon.svg" alt="NetScope" height="32">
   </a>
   <br>
-  <sub>Built with zero dependencies and too much caffeine.</sub>
+  <sub>Built with zero dependencies, Claude Code, and caffeine.</sub>
 </p>
