@@ -1,6 +1,6 @@
 <p align="center">
   <a href="https://patrickking67.github.io/NetScope/">
-    <img src="images/logo-light.svg" alt="NetScope" height="60">
+    <img src="assets/images/logo-light.svg" alt="NetScope" height="60">
   </a>
 </p>
 
@@ -52,7 +52,7 @@ Sign in with Google, GitHub, or email to save results across devices via Firebas
 
 <p align="center">
   <a href="https://patrickking67.github.io/NetScope/">
-    <img src="images/social-preview.png" alt="NetScope Screenshot" width="720">
+    <img src="assets/images/social-preview.png" alt="NetScope Screenshot" width="720">
   </a>
 </p>
 
@@ -124,7 +124,7 @@ To configure Firebase for your own fork:
 1. Create a project at [console.firebase.google.com](https://console.firebase.google.com/)
 2. Enable **Authentication** with your desired providers (Google, GitHub, Email/Password)
 3. Enable **Cloud Firestore**
-4. Copy your config into `js/firebase-config.js`
+4. Copy your config into `assets/js/firebase-config.js`
 
 See the full walkthrough in **[docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)**.
 
@@ -168,7 +168,7 @@ Copyright (c) 2026 Patrick King
 
 <p align="center">
   <a href="https://patrickking67.github.io/NetScope/">
-    <img src="images/logo-icon.svg" alt="NetScope" height="32">
+    <img src="assets/images/logo-icon.svg" alt="NetScope" height="32">
   </a>
   <br>
   <sub>Built with zero dependencies, Claude Code, and caffeine.</sub>

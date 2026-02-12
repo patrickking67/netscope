@@ -61,7 +61,7 @@ This ensures users can only read and write their own saved results.
 
 ## 5. Update Firebase Config
 
-Edit `js/firebase-config.js` and replace the config object with your own:
+Edit `assets/js/firebase-config.js` and replace the config object with your own:
 
 ```js
 const firebaseConfig = {
