@@ -38,6 +38,7 @@
 - [Getting Started](#getting-started)
 - [Deployment](#deployment)
 - [Privacy](#privacy)
+- [Inspiration](#inspiration)
 - [License](#license)
 
 ---
@@ -61,11 +62,11 @@ Sign in with Google, GitHub, or email to save results across devices via Firebas
 | | Feature | Description |
 |---|---------|-------------|
 | :globe_with_meridians: | **IP & Geolocation** | Detect your public IP, ISP, ASN, proxy/VPN status, and map your approximate location |
-| :zap: | **Speed Test** | Measure download, upload, and ping with animated gauges via Cloudflare |
+| :zap: | **Speed Test** | Multi-connection download, upload, ping, and jitter with animated gauges via Cloudflare |
 | :shield: | **Breach Check** | Check emails (XposedOrNot) and passwords (HIBP k-anonymity) against known breaches |
-| :lock: | **Password Generator** | Generate strong passwords with configurable length, character sets, and strength meter |
+| :lock: | **Password Generator** | One-click presets (Password, PIN, Passphrase, Hex Key) plus custom length, character sets, and strength meter |
 | :satellite: | **DNS & Security Scan** | Lookup DNS records, check SPF/DMARC/DKIM, DNSSEC, and WebRTC leak detection |
-| :rocket: | **Run All** | Execute every test in sequence with one click |
+| :rocket: | **Full Scan** | Run every security test in sequence with a step-by-step progress overlay |
 | :outbox_tray: | **Export** | Copy results, share via email, or download a PDF report |
 | :art: | **Dark / Light Theme** | Toggle between themes with persistent preference |
 | :bust_in_silhouette: | **Authentication** | Sign in with Google, GitHub, or email/password via Firebase |
@@ -85,7 +86,7 @@ Pure HTML, CSS, and JavaScript. The repo root **is** the deployable output — n
 | Email Breach | [XposedOrNot](https://xposedornot.com/) | Checks email against breach databases |
 | DNS Lookup | [Google DNS-over-HTTPS](https://dns.google/) | Resolves DNS records over HTTPS |
 | Maps | [Leaflet](https://leafletjs.com/) + [OpenStreetMap](https://www.openstreetmap.org/) | Interactive geolocation map |
-| Speed Test | [Cloudflare](https://speed.cloudflare.com/) | Download/upload/ping measurements |
+| Speed Test | [Cloudflare](https://speed.cloudflare.com/) | Multi-connection download/upload, ping, and jitter |
 | Auth & Database | [Firebase](https://firebase.google.com/) | Google, GitHub, & email auth + Firestore |
 | PDF Export | [jsPDF](https://github.com/parallax/jsPDF) | Client-side PDF generation |
 
@@ -180,6 +181,14 @@ Push to main  →  .github/workflows/static.yml  →  Live on GitHub Pages
 - **No analytics or tracking.** Zero telemetry.
 - **Sign-in is optional.** Every feature works without an account.
 - **Cloud saves are private.** If signed in, results are stored in your own Firestore collection.
+
+## Inspiration
+
+NetScope was inspired by several outstanding tools and services:
+
+- **[DivergeIT Security Scanner](https://check.divergeit.com)** — Created by Connor Bescos and Brian Yeo. A major inspiration for NetScope's approach to client-side security scanning.
+- **[Ookla Speedtest](https://www.speedtest.net)** — The gold standard for internet speed testing. Inspired the multi-connection speed test with animated gauges and jitter measurement.
+- **[Have I Been Pwned](https://haveibeenpwned.com)** — Troy Hunt's pioneering breach notification service. NetScope uses HIBP's k-anonymity API for privacy-preserving password breach checks.
 
 ## License
 

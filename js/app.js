@@ -1080,7 +1080,120 @@ const CHARSETS = {
   lower: 'abcdefghijklmnopqrstuvwxyz',
   numbers: '0123456789',
   symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?',
+  hex: '0123456789abcdef',
 };
+
+const WORDLIST = [
+  'absorb','accent','acid','acorn','acre','adapt','adjust','admit','adult','advice',
+  'afford','agent','agree','ahead','alarm','album','alert','alien','align','alive',
+  'alpha','amaze','ample','anchor','angel','angle','angry','animal','ankle','annual',
+  'apart','appeal','apple','arena','argue','armor','army','arrow','artist','ascend',
+  'aspect','asset','assist','atom','audio','audit','august','avid','avoid','awake',
+  'badge','bamboo','banana','banner','barrel','basic','basket','battle','beach','beacon',
+  'beast','beauty','beetle','begin','behave','belly','bench','best','beyond','bike',
+  'bind','bitter','blade','blame','blank','blast','blaze','bleed','blend','bless',
+  'blind','block','bloom','board','bold','bolt','bomb','bonus','boost','border',
+  'bounce','brain','brave','bread','breeze','brick','bridge','brief','bright','broad',
+  'broken','bronze','brush','bubble','budget','build','bullet','bundle','burden','burst',
+  'cabin','cable','cage','calm','camera','camp','canal','candle','cannon','canvas',
+  'carbon','cargo','carpet','castle','casual','catch','cattle','causal','cave','cedar',
+  'cellar','cement','census','cereal','chain','chair','chalk','champ','change','chapel',
+  'charge','charm','chase','cheap','check','cherry','chess','chief','child','chunk',
+  'circle','civil','claim','clamp','clash','class','clean','clever','click','cliff',
+  'climb','clinic','clock','close','cloth','cloud','cluster','coach','coast','cobalt',
+  'code','coffee','coil','cold','collar','column','combat','comedy','commit','common',
+  'copper','coral','corner','cosmic','cotton','couch','cover','craft','crane','crash',
+  'crater','crawl','crazy','cream','credit','creek','crest','crew','crisis','crisp',
+  'cross','crowd','cruel','crush','crystal','cubic','cupid','curve','cycle','dagger',
+  'daily','damage','dance','danger','daring','dash','dawn','debate','decade','decent',
+  'decide','deep','defend','define','defy','delay','delta','demand','demon','denial',
+  'dense','deny','deploy','depth','deputy','derive','desert','design','detail','detect',
+  'device','devote','dialog','diesel','differ','digit','dinner','direct','dirty','disco',
+  'divide','dizzy','doctor','dodge','domain','donor','double','draft','dragon','drama',
+  'drastic','dream','dress','drift','drill','drink','drive','drop','drum','dry',
+  'dune','dust','duty','dwarf','dynamic','eager','eagle','earth','echo','eclipse',
+  'edge','effort','eight','elbow','elder','elect','elegant','elite','embark','ember',
+  'emerge','emit','empire','employ','empty','enable','endure','enemy','energy','engine',
+  'enjoy','enrich','ensure','entire','entry','envy','episode','equal','equip','erode',
+  'error','escape','estate','eternal','evade','evening','evolve','exact','example','excess',
+  'exotic','expand','expect','expire','export','expose','extend','extra','fable','fabric',
+  'factor','faculty','faint','faith','false','family','famous','fancy','fantasy','fatal',
+  'father','fault','feast','federal','fence','festival','fetch','fever','fiber','fiction',
+  'field','figure','filter','final','finger','finish','fire','firm','fiscal','flag',
+  'flame','flash','flavor','fleet','flight','float','flood','floor','flower','fluid',
+  'foam','focus','foil','fold','follow','food','force','forest','forget','formal',
+  'fossil','foster','found','fragile','frame','fresh','friend','fringe','frog','frozen',
+  'fruit','fuel','fury','future','gadget','galaxy','garden','garlic','gate','gauge',
+  'gaze','general','genius','genre','gentle','ghost','giant','gift','ginger','glad',
+  'glance','glass','globe','glory','glove','glow','goat','gospel','gossip','govern',
+  'grace','grain','grant','grape','gravity','great','green','grid','grief','grit',
+  'group','guard','guess','guide','guitar','habit','hammer','happy','harbor','harvest',
+  'hawk','hazard','health','heart','heavy','helmet','hero','hidden','highway','hockey',
+  'hollow','home','honey','honor','horror','horse','host','hotel','hover','human',
+  'humble','humor','hunger','hybrid','ice','icon','idea','ignore','image','immune',
+  'impact','import','impose','impulse','income','index','indoor','infant','inflict','inform',
+  'inject','inmate','inner','input','insect','inside','insist','install','intact','invite',
+  'iron','island','isolate','ivory','jacket','jaguar','jazz','jewel','job','joint',
+  'joke','journal','journey','judge','juice','jumbo','jungle','junior','just','kangaroo',
+  'kayak','keeper','kernel','kettle','kidney','kingdom','kitchen','kiwi','knee','knife',
+  'knock','label','labor','ladder','lance','laptop','large','laser','latch','launch',
+  'lava','lawn','layer','leader','leaf','legacy','legend','lemon','length','lens',
+  'letter','level','liberty','light','limit','linger','lion','liquid','list','little',
+  'lizard','load','lobster','local','logic','lonely','loop','lottery','loyal','lucky',
+  'lumber','lunar','lunch','luxury','lyrics','magnet','maiden','major','mango','maple',
+  'marble','margin','marine','master','match','matter','meadow','media','melody','member',
+  'mental','mentor','mercy','merge','merit','method','middle','mild','million','mimic',
+  'mineral','minor','minute','mirror','misery','mix','mobile','model','modify','moist',
+  'moment','monkey','monster','month','moral','motion','motor','mouse','movie','muffin',
+  'muscle','museum','music','mutual','mystery','myth','naive','napkin','narrow','nasty',
+  'nature','near','needle','nerve','nest','neutral','noble','noise','nomad','normal',
+  'notice','novel','number','nurse','object','obtain','ocean','offer','olive','omega',
+  'onion','open','opera','opinion','oppose','option','orbit','orange','order','organ',
+  'orient','orphan','ostrich','outer','output','oval','owner','oxygen','oyster','ozone',
+  'paddle','palace','panda','panel','panic','paper','parade','parent','parrot','patch',
+  'patrol','pause','peanut','pelican','pencil','people','pepper','perfect','permit','person',
+  'phrase','piano','picnic','picture','piece','pilot','pistol','pizza','planet','plaster',
+  'plaza','pledge','plunge','pocket','poem','polar','police','pond','pony','popular',
+  'portal','potato','pottery','poverty','powder','power','predict','prepare','present','pretty',
+  'prevent','pride','primary','prince','prison','private','problem','process','profit','program',
+  'project','promise','protect','provide','public','pudding','pulse','pumpkin','punch','purple',
+  'puzzle','pyramid','quantum','quarter','queen','quick','quote','rabbit','radar','radio',
+  'raise','rally','ramp','random','range','rapid','rather','raven','razor','rebel',
+  'recall','record','recycle','reform','region','regret','regular','reject','relax','release',
+  'relief','remain','remind','remove','render','renew','repair','repeat','replace','report',
+  'rescue','resist','result','retire','retreat','return','reveal','review','reward','ribbon',
+  'rifle','rigid','ring','ripple','ritual','river','road','robot','rocket','romance',
+  'rotate','rough','royal','rubber','rude','rugby','ruler','runway','rural','saddle',
+  'sadness','safari','salad','salmon','salon','salute','sample','satisfy','sauce','sausage',
+  'scale','scatter','scene','scheme','school','scout','screen','script','search','season',
+  'second','secret','section','segment','select','senior','sense','series','service','session',
+  'settle','shadow','shaft','shallow','sheriff','shield','shift','shock','shrimp','shrug',
+  'shuttle','sibling','siege','sight','signal','silent','silver','simple','since','siren',
+  'sister','sketch','skull','slender','slice','slim','slogan','slow','small','smart',
+  'smile','smooth','snake','soccer','social','sodium','solar','solid','solution','source',
+  'space','spare','spatial','spawn','spend','sphere','spider','spirit','splash','split',
+  'sponsor','spray','spread','spring','squad','squeeze','stable','stadium','staff','stage',
+  'stairs','stamp','stand','start','steak','steel','stem','stereo','stick','stone',
+  'storm','story','strategy','street','strike','strong','struggle','student','studio','style',
+  'submit','sudden','sugar','summer','summit','sunset','super','supply','surface','surge',
+  'surprise','survey','suspect','sustain','swamp','swift','symbol','symptom','system','table',
+  'tackle','talent','target','temple','tenant','tender','tennis','term','test','theme',
+  'theory','thesis','thrill','throne','tiger','timber','tissue','title','toast','today',
+  'tomato','tongue','topple','total','tourist','tower','traffic','train','transfer','travel',
+  'tray','trend','trial','tribe','trick','trigger','trim','triple','trophy','trouble',
+  'truck','truly','trumpet','trust','tumble','tunnel','turkey','twist','typical','ugly',
+  'umbrella','unable','uncle','under','unfair','unfold','unique','unit','universe','unknown',
+  'unlock','until','unveil','update','upgrade','upper','upset','urban','usage','useful',
+  'usual','utility','vacant','vacuum','valley','valve','vanish','vapor','vast','vault',
+  'vehicle','velvet','vendor','venture','verify','version','vessel','veteran','viable','victim',
+  'victory','video','village','vintage','violin','virtual','virus','visit','visual','vital',
+  'vivid','vocal','voice','volcano','volume','voyage','waffle','wagon','walnut','wander',
+  'warrior','water','wealth','weapon','weather','wedding','welcome','whale','wheat','whisper',
+  'wicked','wide','wisdom','witness','wolf','wonder','world','worry','worth','wrap',
+  'wreck','wrestle','wrist','yard','yellow','yoga','young','zebra','zero','zone'
+];
+
+let currentPreset = 'password';
 
 function initPasswordGenerator() {
   const slider = document.getElementById('pwgen-length');
@@ -1089,9 +1202,76 @@ function initPasswordGenerator() {
 
   document.getElementById('btn-generate').addEventListener('click', generatePassword);
   document.getElementById('pwgen-copy').addEventListener('click', copyPassword);
+
+  // Preset buttons
+  document.querySelectorAll('.pwgen-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.pwgen-preset').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPreset = btn.dataset.preset;
+      applyPreset(currentPreset);
+      generatePassword();
+    });
+  });
+}
+
+function applyPreset(preset) {
+  const controls = document.getElementById('pwgen-controls');
+  const slider = document.getElementById('pwgen-length');
+  const lengthVal = document.getElementById('pwgen-length-val');
+  const genBtn = document.getElementById('btn-generate');
+
+  if (preset === 'passphrase') {
+    controls.classList.add('hidden');
+    genBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> Generate Passphrase';
+  } else {
+    controls.classList.remove('hidden');
+    genBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> Generate Password';
+
+    if (preset === 'pin') {
+      slider.min = 4; slider.max = 12; slider.value = 6;
+      lengthVal.textContent = '6';
+      document.getElementById('pwgen-upper').checked = false;
+      document.getElementById('pwgen-lower').checked = false;
+      document.getElementById('pwgen-numbers').checked = true;
+      document.getElementById('pwgen-symbols').checked = false;
+    } else if (preset === 'hex') {
+      slider.min = 8; slider.max = 64; slider.value = 32;
+      lengthVal.textContent = '32';
+      document.getElementById('pwgen-upper').checked = false;
+      document.getElementById('pwgen-lower').checked = false;
+      document.getElementById('pwgen-numbers').checked = false;
+      document.getElementById('pwgen-symbols').checked = false;
+    } else { // password
+      slider.min = 8; slider.max = 64; slider.value = 20;
+      lengthVal.textContent = '20';
+      document.getElementById('pwgen-upper').checked = true;
+      document.getElementById('pwgen-lower').checked = true;
+      document.getElementById('pwgen-numbers').checked = true;
+      document.getElementById('pwgen-symbols').checked = true;
+    }
+  }
 }
 
 function generatePassword() {
+  if (currentPreset === 'passphrase') {
+    generatePassphrase();
+    return;
+  }
+
+  if (currentPreset === 'hex') {
+    const length = parseInt(document.getElementById('pwgen-length').value, 10);
+    const arr = new Uint32Array(length);
+    crypto.getRandomValues(arr);
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      result += CHARSETS.hex[arr[i] % 16];
+    }
+    document.getElementById('pwgen-password').textContent = result;
+    updateStrength(result);
+    return;
+  }
+
   const length = parseInt(document.getElementById('pwgen-length').value, 10);
   let pool = '';
   if (document.getElementById('pwgen-upper').checked) pool += CHARSETS.upper;
@@ -1113,6 +1293,20 @@ function generatePassword() {
 
   document.getElementById('pwgen-password').textContent = password;
   updateStrength(password);
+}
+
+function generatePassphrase() {
+  const wordCount = 5;
+  const arr = new Uint32Array(wordCount);
+  crypto.getRandomValues(arr);
+  const words = [];
+  for (let i = 0; i < wordCount; i++) {
+    words.push(WORDLIST[arr[i] % WORDLIST.length]);
+  }
+  const sep = '-';
+  const passphrase = words.join(sep);
+  document.getElementById('pwgen-password').textContent = passphrase;
+  updateStrength(passphrase);
 }
 
 function updateStrength(password) {

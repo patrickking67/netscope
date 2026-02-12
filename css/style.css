@@ -1323,6 +1323,38 @@ input, select { font-family: inherit; color: inherit; }
 [data-theme="light"] .fullscan-bar { background: rgba(0,0,0,0.06); }
 [data-theme="light"] .settings-panel-inner { background: var(--bg-body); }
 
+/* ===== Password Generator Presets ===== */
+.pwgen-presets {
+  display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap;
+}
+.pwgen-preset {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 999px;
+  font-size: 13px; font-weight: 500;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  transition: all 0.2s ease; cursor: pointer;
+}
+.pwgen-preset:hover {
+  border-color: var(--border-hover);
+  color: var(--text-primary);
+  background: rgba(255,255,255,0.07);
+}
+.pwgen-preset.active {
+  background: rgba(59,130,246,0.12);
+  border-color: rgba(59,130,246,0.4);
+  color: var(--accent-blue);
+}
+.pwgen-preset svg { flex-shrink: 0; }
+[data-theme="light"] .pwgen-preset { background: rgba(0,0,0,0.03); }
+[data-theme="light"] .pwgen-preset:hover { background: rgba(0,0,0,0.06); }
+[data-theme="light"] .pwgen-preset.active {
+  background: rgba(59,130,246,0.08);
+  border-color: rgba(59,130,246,0.35);
+}
+.pwgen-controls.hidden { display: none; }
+
 /* ===== Enhanced Card Animations ===== */
 @keyframes tabSlideIn {
   from { opacity: 0; transform: translateY(12px); }
@@ -1348,4 +1380,6 @@ input, select { font-family: inherit; color: inherit; }
   .fullscan-title { font-size: 20px; }
   .fullscan-step { padding: 12px 14px; gap: 12px; }
   .settings-panel-inner { max-width: 100%; }
+  .pwgen-presets { gap: 6px; }
+  .pwgen-preset { padding: 7px 12px; font-size: 12px; }
 }

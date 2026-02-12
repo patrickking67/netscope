@@ -354,6 +354,24 @@
             <div class="card-icon card-icon--green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
             <div><h2 class="card-title">Password Generator</h2><p class="card-subtitle">Generate cryptographically secure passwords instantly</p></div>
           </div>
+          <div class="pwgen-presets">
+            <button class="pwgen-preset active" data-preset="password">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+              Password
+            </button>
+            <button class="pwgen-preset" data-preset="pin">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+              PIN
+            </button>
+            <button class="pwgen-preset" data-preset="passphrase">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Passphrase
+            </button>
+            <button class="pwgen-preset" data-preset="hex">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+              Hex Key
+            </button>
+          </div>
           <div class="pwgen-output">
             <code class="pwgen-password" id="pwgen-password">Your password will appear here</code>
             <button class="pwgen-copy" id="pwgen-copy" title="Copy password">
@@ -362,7 +380,7 @@
           </div>
           <div class="pwgen-strength"><div class="pwgen-strength-bar" id="pwgen-strength-bar"></div></div>
           <div class="pwgen-strength-label" id="pwgen-strength-label">--</div>
-          <div class="pwgen-controls">
+          <div class="pwgen-controls" id="pwgen-controls">
             <div class="pwgen-slider-group">
               <label class="pwgen-label">Length: <strong id="pwgen-length-val">20</strong></label>
               <input type="range" id="pwgen-length" class="pwgen-slider" min="8" max="64" value="20">
