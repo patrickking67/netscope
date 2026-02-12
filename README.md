@@ -1,39 +1,92 @@
-# NetScope
+<p align="center">
+  <a href="https://patrickking67.github.io/NetScope/">
+    <img src="images/logo-dark.svg" alt="NetScope" height="60">
+  </a>
+</p>
 
-A lightweight, client-side network security toolkit. No backend, no build step, no frameworks.
+<p align="center">
+  <strong>A client-side network security toolkit.</strong><br>
+  IP lookup, speed testing, breach detection, password generation, and DNS analysis — all in your browser.
+</p>
 
-**[Live Demo](https://patrickking67.github.io/NetScope/)**
+<p align="center">
+  <a href="https://patrickking67.github.io/NetScope/"><img src="https://img.shields.io/badge/Live_Demo-Visit-3b82f6?style=for-the-badge" alt="Live Demo"></a>
+  <img src="https://img.shields.io/github/license/patrickking67/NetScope?style=for-the-badge&color=10b981" alt="License">
+  <img src="https://img.shields.io/badge/Build-Zero-8b5cf6?style=for-the-badge" alt="Zero Build">
+  <img src="https://img.shields.io/badge/Framework-None-ef4444?style=for-the-badge" alt="No Framework">
+</p>
+
+---
+
+## Table of Contents
+
+- [About](#about)
+- [Features](#features)
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Deployment](#deployment)
+- [Privacy](#privacy)
+- [License](#license)
+
+---
+
+## About
+
+NetScope is a lightweight, open-source network security toolkit that runs entirely in your browser. No backend servers, no build tools, no frameworks — just plain HTML, CSS, and JavaScript.
+
+It gives you instant insight into your network footprint: where your traffic originates, how fast your connection is, whether your credentials have been compromised, and how well a domain's DNS and email security are configured.
+
+Sign in with Google, GitHub, or email to save results across devices via Firebase. Or skip sign-in entirely — every feature works without an account.
+
+<p align="center">
+  <a href="https://patrickking67.github.io/NetScope/">
+    <img src="images/social-preview.png" alt="NetScope Screenshot" width="720">
+  </a>
+</p>
 
 ## Features
 
-- **IP & Geolocation** -- Detect your public IP, ISP, ASN, proxy/VPN status, and map your approximate location
-- **Speed Test** -- Measure download, upload, and ping with animated gauges
-- **Breach Check** -- Check emails (XposedOrNot API) and passwords (HIBP k-anonymity) against known breaches
-- **Password Generator** -- Generate strong passwords with configurable length, character sets, and strength meter
-- **DNS & Security Scan** -- Lookup DNS records, check SPF/DMARC/DKIM, DNSSEC, and WebRTC leak detection
-- **Run All** -- Execute every test in sequence with one click
-- **Export** -- Copy results, share via email, or download a PDF report
-- **Dark / Light Theme** -- Toggle between themes with persistent preference
-- **Google Sign-In** -- Optional authentication via Firebase
-- **Cloud Save** -- Save and retrieve test results across devices (requires sign-in)
-- **Loading Screen** -- Animated splash screen on initial load
+| | Feature | Description |
+|---|---------|-------------|
+| :globe_with_meridians: | **IP & Geolocation** | Detect your public IP, ISP, ASN, proxy/VPN status, and map your approximate location |
+| :zap: | **Speed Test** | Measure download, upload, and ping with animated gauges via Cloudflare |
+| :shield: | **Breach Check** | Check emails (XposedOrNot) and passwords (HIBP k-anonymity) against known breaches |
+| :lock: | **Password Generator** | Generate strong passwords with configurable length, character sets, and strength meter |
+| :satellite: | **DNS & Security Scan** | Lookup DNS records, check SPF/DMARC/DKIM, DNSSEC, and WebRTC leak detection |
+| :rocket: | **Run All** | Execute every test in sequence with one click |
+| :outbox_tray: | **Export** | Copy results, share via email, or download a PDF report |
+| :art: | **Dark / Light Theme** | Toggle between themes with persistent preference |
+| :bust_in_silhouette: | **Authentication** | Sign in with Google, GitHub, or email/password via Firebase |
+| :cloud: | **Cloud Save** | Save and retrieve test results across devices (requires sign-in) |
 
-## Tech
+## Tech Stack
 
-Pure HTML, CSS, and JavaScript. Zero build step -- the repo root is the deployable output.
+Pure HTML, CSS, and JavaScript. The repo root **is** the deployable output — no bundler, no transpiler, no `node_modules`.
 
-**APIs & Services:**
+### APIs & Services
 
-| Feature | Provider |
-|---------|----------|
-| IP Detection | [ipify](https://www.ipify.org/) |
-| Geolocation | [ipapi.co](https://ipapi.co/) / [ipwho.is](https://ipwho.is/) |
-| Password Breach | [HIBP Pwned Passwords](https://haveibeenpwned.com/API/v3#PwnedPasswords) |
-| Email Breach | [XposedOrNot](https://xposedornot.com/) |
-| DNS Lookup | [Google DNS-over-HTTPS](https://dns.google/) |
-| Maps | [Leaflet](https://leafletjs.com/) + [OpenStreetMap](https://www.openstreetmap.org/) |
-| Speed Test | [Cloudflare](https://speed.cloudflare.com/) |
-| Auth & Database | [Firebase](https://firebase.google.com/) (Google Sign-In + Firestore) |
+| Feature | Provider | How It's Used |
+|---------|----------|---------------|
+| IP Detection | [ipify](https://www.ipify.org/) | Fetches public IP address |
+| Geolocation | [ipapi.co](https://ipapi.co/) / [ipwho.is](https://ipwho.is/) | Resolves IP to location, ISP, ASN |
+| Password Breach | [HIBP Pwned Passwords](https://haveibeenpwned.com/API/v3#PwnedPasswords) | k-anonymity hash prefix lookup |
+| Email Breach | [XposedOrNot](https://xposedornot.com/) | Checks email against breach databases |
+| DNS Lookup | [Google DNS-over-HTTPS](https://dns.google/) | Resolves DNS records over HTTPS |
+| Maps | [Leaflet](https://leafletjs.com/) + [OpenStreetMap](https://www.openstreetmap.org/) | Interactive geolocation map |
+| Speed Test | [Cloudflare](https://speed.cloudflare.com/) | Download/upload/ping measurements |
+| Auth & Database | [Firebase](https://firebase.google.com/) | Google, GitHub, & email auth + Firestore |
+| PDF Export | [jsPDF](https://github.com/parallax/jsPDF) | Client-side PDF generation |
+
+### Frontend Libraries
+
+| Library | Version | Purpose |
+|---------|---------|---------|
+| [Leaflet](https://leafletjs.com/) | 1.9.4 | Map rendering |
+| [jsPDF](https://github.com/parallax/jsPDF) | 2.5.1 | PDF export |
+| [Firebase SDK](https://firebase.google.com/) | 10.12.0 | Auth + Firestore (compat) |
+| [Inter](https://rsms.me/inter/) | Variable | UI typeface |
+| [JetBrains Mono](https://www.jetbrains.com/lp/mono/) | Variable | Monospace typeface |
 
 ## Project Structure
 
@@ -41,61 +94,93 @@ Pure HTML, CSS, and JavaScript. Zero build step -- the repo root is the deployab
 NetScope/
 ├── .github/
 │   └── workflows/
-│       └── static.yml          # GitHub Pages deployment
+│       └── static.yml              # GitHub Pages deployment
 ├── css/
-│   └── style.css               # All styles
+│   └── style.css                   # All styles (dark + light themes)
 ├── docs/
-│   └── FIREBASE_SETUP.md       # Firebase setup guide
+│   └── FIREBASE_SETUP.md           # Firebase configuration guide
 ├── images/
-│   ├── bg-pattern.svg          # Subtle background dot pattern
-│   ├── favicon.svg             # SVG favicon
-│   ├── logo-dark.svg           # Logo for dark theme
-│   ├── logo-icon.svg           # Icon-only logo
-│   ├── logo-light.svg          # Logo for light theme
-│   └── social-preview.png      # Open Graph preview image
+│   ├── bg-pattern.svg              # Background dot pattern
+│   ├── favicon.svg                 # SVG favicon
+│   ├── logo-dark.svg               # Logo for dark theme
+│   ├── logo-icon.svg               # Icon-only logo
+│   ├── logo-light.svg              # Logo for light theme
+│   └── social-preview.png          # Open Graph preview image
 ├── js/
-│   ├── app.js                  # Main application logic
-│   ├── auth.js                 # Google Sign-In flow
-│   ├── firebase-config.js      # Firebase project config
-│   └── firestore.js            # Cloud save/load logic
+│   ├── app.js                      # Core application logic
+│   ├── auth.js                     # Auth modal, Google/GitHub/email sign-in
+│   ├── firebase-config.js          # Firebase project config
+│   └── firestore.js                # Cloud save/load logic
 ├── .gitignore
-├── about.html                  # About page
-├── index.html                  # Main app
-├── LICENSE                     # MIT
+├── about.html                      # About page
+├── index.html                      # Main app
+├── LICENSE                         # MIT
 └── README.md
 ```
 
-## Privacy
-
-- Passwords are SHA-1 hashed locally; only the first 5 hash characters are sent (k-anonymity)
-- All processing happens in your browser
-- No analytics or tracking
-- Sign-in is optional -- the app works fully without it
-- If signed in, saved results are stored in your private Firestore collection
-
 ## Getting Started
 
+No dependencies to install. Clone and serve.
+
 ```bash
-# Clone
+# Clone the repo
 git clone https://github.com/patrickking67/NetScope.git
 cd NetScope
 
-# Serve locally
+# Serve locally (pick one)
 npx serve .
+# or
+python3 -m http.server 3000
+# or just open index.html in your browser
 ```
 
-To set up Firebase for your own fork, see [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
+### Firebase Setup (Optional)
+
+Firebase powers authentication (Google, GitHub, email/password) and cloud save. The app works fully without it — these features just won't appear.
+
+To configure Firebase for your own fork:
+
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com/)
+2. Enable **Authentication** with your desired providers (Google, GitHub, Email/Password)
+3. Enable **Cloud Firestore**
+4. Copy your config into `js/firebase-config.js`
+
+See the full walkthrough in **[docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md)**.
 
 ## Deployment
 
-NetScope deploys automatically to GitHub Pages via the included GitHub Actions workflow (`.github/workflows/static.yml`). Push to `main` and the site updates within minutes.
+NetScope deploys automatically to **GitHub Pages** via the included GitHub Actions workflow.
 
-To deploy your own fork:
+```
+Push to main  →  .github/workflows/static.yml  →  Live on GitHub Pages
+```
 
-1. Fork the repository
-2. Enable GitHub Pages in **Settings > Pages** (source: GitHub Actions)
-3. Push to `main` -- the workflow handles the rest
+**To deploy your own fork:**
+
+1. Fork this repository
+2. Go to **Settings > Pages** and set source to **GitHub Actions**
+3. Push to `main` — the site updates within minutes
+
+## Privacy
+
+- **Passwords never leave your browser.** They're SHA-1 hashed locally; only the first 5 hash characters are sent to HIBP (k-anonymity).
+- **All processing is client-side.** No server receives your raw data.
+- **No analytics or tracking.** Zero telemetry.
+- **Sign-in is optional.** Every feature works without an account.
+- **Cloud saves are private.** If signed in, results are stored in your own Firestore collection.
 
 ## License
 
-[MIT](LICENSE)
+This project is licensed under the [MIT License](LICENSE).
+
+Copyright (c) 2026 Patrick King
+
+---
+
+<p align="center">
+  <a href="https://patrickking67.github.io/NetScope/">
+    <img src="images/logo-icon.svg" alt="NetScope" height="32">
+  </a>
+  <br>
+  <sub>Built with zero dependencies and too much caffeine.</sub>
+</p>
