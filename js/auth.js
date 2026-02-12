@@ -18,15 +18,19 @@ function initAuth() {
 
     if (user) {
       localStorage.removeItem('netscope-guest');
+      localStorage.setItem('netscope-session', 'active');
       isGuest = false;
       updateAuthUI(user);
+      if (typeof updateSettingsAccount === 'function') updateSettingsAccount(user);
       if (typeof showDashboard === 'function') showDashboard();
       if (typeof loadUserPreferences === 'function') loadUserPreferences(user.uid);
     } else if (isGuest) {
       updateAuthUI(null);
+      if (typeof updateSettingsAccount === 'function') updateSettingsAccount(null);
       if (typeof showDashboard === 'function') showDashboard();
     } else {
       updateAuthUI(null);
+      if (typeof updateSettingsAccount === 'function') updateSettingsAccount(null);
       if (typeof showAuthGate === 'function') showAuthGate();
     }
   });
@@ -327,6 +331,7 @@ async function handleSignOut() {
   try {
     await auth.signOut();
     localStorage.removeItem('netscope-guest');
+    localStorage.removeItem('netscope-session');
     isGuest = false;
     showToast('Signed out');
     closeUserDropdown();

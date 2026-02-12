@@ -2,7 +2,7 @@
 
 const state = {
   ip: null, geo: null,
-  speed: { ping: null, download: null, upload: null },
+  speed: { ping: null, jitter: null, download: null, upload: null },
   breach: { email: null, password: null },
   scan: null,
 };
@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPasswordToggle();
   initEventListeners();
   initPasswordGenerator();
+  initSettings();
 
   // Firebase (guarded - works without it)
   if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== 'YOUR_API_KEY') {
@@ -310,7 +311,7 @@ function countryFlag(code) {
 }
 
 // ============================================================
-// SPEED TEST - Cloudflare endpoints + fallback
+// SPEED TEST - Multi-connection, time-based (Ookla-style)
 // ============================================================
 let speedRunning = false;
 
@@ -327,23 +328,25 @@ async function runSpeedTest() {
   resetGauge();
 
   try {
-    // PING
+    // LATENCY + JITTER
     phase.textContent = 'Testing latency...';
-    const ping = await testPing();
-    state.speed.ping = ping;
-    animateNumber(document.getElementById('speed-ping'), ping, 0);
+    const latency = await testLatency();
+    state.speed.ping = latency.ping;
+    state.speed.jitter = latency.jitter;
+    animateNumber(document.getElementById('speed-ping'), latency.ping, 0);
+    animateNumber(document.getElementById('speed-jitter'), latency.jitter, 1);
 
-    // DOWNLOAD
+    // DOWNLOAD (multi-connection, ~12s)
     phase.textContent = 'Testing download...';
-    const dl = await testDownload();
+    const dl = await testMultiDownload();
     state.speed.download = dl;
     animateNumber(document.getElementById('speed-download'), dl, 1);
     setGauge(dl);
     animateNumber(document.getElementById('gauge-number'), dl, 1);
 
-    // UPLOAD
+    // UPLOAD (multi-connection, ~12s)
     phase.textContent = 'Testing upload...';
-    const ul = await testUpload();
+    const ul = await testMultiUpload();
     state.speed.upload = ul;
     animateNumber(document.getElementById('speed-upload'), ul, 1);
 
@@ -360,58 +363,104 @@ async function runSpeedTest() {
   }
 }
 
-async function testPing() {
+async function testLatency() {
   const results = [];
-  for (let i = 0; i < 6; i++) {
+  // Warmup ping
+  try { await fetch(`https://speed.cloudflare.com/__down?measId=warmup&bytes=0`, { cache: 'no-store' }); } catch {}
+
+  for (let i = 0; i < 20; i++) {
     const start = performance.now();
     try {
-      await fetch(`https://www.google.com/generate_204?_=${Date.now()}-${i}`, { mode: 'no-cors', cache: 'no-store' });
+      await fetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}-p${i}&bytes=0`, { cache: 'no-store' });
     } catch {
-      await fetch(`https://1.1.1.1/cdn-cgi/trace?_=${Date.now()}-${i}`, { mode: 'no-cors', cache: 'no-store' });
+      try {
+        await fetch(`https://www.google.com/generate_204?_=${Date.now()}-${i}`, { mode: 'no-cors', cache: 'no-store' });
+      } catch { continue; }
     }
     results.push(performance.now() - start);
   }
+
+  if (results.length === 0) return { ping: 0, jitter: 0 };
+
   results.sort((a, b) => a - b);
-  // Drop highest and lowest, take median of rest
-  const trimmed = results.slice(1, -1);
-  return trimmed[Math.floor(trimmed.length / 2)];
+  const trim = Math.max(1, Math.floor(results.length * 0.1));
+  const trimmed = results.slice(trim, -trim);
+  const ping = trimmed[Math.floor(trimmed.length / 2)];
+
+  // Jitter = mean absolute difference between consecutive pings
+  let jitterSum = 0;
+  for (let i = 1; i < trimmed.length; i++) {
+    jitterSum += Math.abs(trimmed[i] - trimmed[i - 1]);
+  }
+  const jitter = trimmed.length > 1 ? jitterSum / (trimmed.length - 1) : 0;
+
+  return { ping, jitter };
 }
 
-async function testDownload() {
-  // Try Cloudflare speed endpoint first, fallback to generating test payloads
-  const cfWorks = await testCfEndpoint();
-  if (cfWorks) return await cfDownload();
-  return await fallbackDownload();
-}
-
-async function testCfEndpoint() {
+async function testCfAvailable() {
   try {
     const r = await fetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}&bytes=1000`, { cache: 'no-store' });
     return r.ok;
   } catch { return false; }
 }
 
-async function cfDownload() {
-  const sizes = [100000, 1000000, 5000000, 10000000, 25000000];
-  let bestSpeed = 0;
-  for (const bytes of sizes) {
-    try {
-      const start = performance.now();
-      const r = await fetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}&bytes=${bytes}`, { cache: 'no-store' });
-      await r.arrayBuffer();
-      const secs = (performance.now() - start) / 1000;
-      const mbps = (bytes * 8) / secs / 1e6;
-      if (mbps > bestSpeed) bestSpeed = mbps;
-      setGauge(mbps);
-      animateNumber(document.getElementById('gauge-number'), mbps, 1);
-      if (secs > 5) break; // enough data
-    } catch { break; }
+async function testMultiDownload() {
+  const cfWorks = await testCfAvailable();
+  if (!cfWorks) return await fallbackDownload();
+
+  const CONNECTIONS = 4;
+  const TOTAL_MS = 12000;
+  const WARMUP_MS = 2000;
+  const transfers = [];
+  const testStart = performance.now();
+
+  async function worker(id) {
+    let size = 100000;
+    while (performance.now() - testStart < TOTAL_MS) {
+      const fetchStart = performance.now();
+      try {
+        const r = await fetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}-d${id}&bytes=${size}`, { cache: 'no-store' });
+        const buf = await r.arrayBuffer();
+        const fetchEnd = performance.now();
+        const fetchDuration = fetchEnd - fetchStart;
+        transfers.push({ bytes: buf.byteLength, endTime: fetchEnd });
+
+        // Adaptive payload sizing
+        if (fetchDuration < 500) size = Math.min(size * 6, 25000000);
+        else if (fetchDuration < 1500) size = Math.min(size * 3, 25000000);
+        else if (fetchDuration < 3000) size = Math.min(Math.round(size * 1.5), 25000000);
+
+        // Update gauge during measurement window
+        if (fetchEnd - testStart > WARMUP_MS) {
+          const measured = transfers.filter(t => t.endTime > testStart + WARMUP_MS);
+          const measuredBytes = measured.reduce((s, t) => s + t.bytes, 0);
+          const elapsed = (fetchEnd - testStart - WARMUP_MS) / 1000;
+          if (elapsed > 0) {
+            const mbps = (measuredBytes * 8) / elapsed / 1e6;
+            setGauge(mbps);
+            animateNumber(document.getElementById('gauge-number'), mbps, 1);
+          }
+        }
+      } catch { break; }
+    }
   }
-  return bestSpeed;
+
+  const workers = [];
+  for (let i = 0; i < CONNECTIONS; i++) workers.push(worker(i));
+  await Promise.allSettled(workers);
+
+  const warmupEnd = testStart + WARMUP_MS;
+  const measured = transfers.filter(t => t.endTime > warmupEnd);
+  const measuredBytes = measured.reduce((s, t) => s + t.bytes, 0);
+  const elapsed = measured.length > 0 ? (Math.max(...measured.map(t => t.endTime)) - warmupEnd) / 1000 : 0;
+  const mbps = elapsed > 0 ? (measuredBytes * 8) / elapsed / 1e6 : 0;
+
+  setGauge(mbps);
+  animateNumber(document.getElementById('gauge-number'), mbps, 1);
+  return mbps;
 }
 
 async function fallbackDownload() {
-  // Use known CDN resources with cache-busting
   const urls = [
     { url: 'https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js', size: 71000 },
     { url: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', size: 640000 },
@@ -434,32 +483,50 @@ async function fallbackDownload() {
   return bestSpeed;
 }
 
-async function testUpload() {
-  const size = 2000000; // 2MB
-  const data = new Blob([new ArrayBuffer(size)]);
-  // Try Cloudflare first
-  try {
-    const start = performance.now();
-    const r = await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: data, cache: 'no-store' });
-    if (r.ok) {
-      const secs = (performance.now() - start) / 1000;
-      return (size * 8) / secs / 1e6;
+async function testMultiUpload() {
+  const CONNECTIONS = 4;
+  const TOTAL_MS = 12000;
+  const WARMUP_MS = 2000;
+  const transfers = [];
+  const testStart = performance.now();
+
+  async function worker(id) {
+    let size = 100000;
+    while (performance.now() - testStart < TOTAL_MS) {
+      const fetchStart = performance.now();
+      try {
+        const data = new Blob([new ArrayBuffer(size)]);
+        const r = await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: data, cache: 'no-store' });
+        if (!r.ok) break;
+        const fetchEnd = performance.now();
+        const fetchDuration = fetchEnd - fetchStart;
+        transfers.push({ bytes: size, endTime: fetchEnd });
+
+        if (fetchDuration < 500) size = Math.min(size * 6, 10000000);
+        else if (fetchDuration < 1500) size = Math.min(size * 3, 10000000);
+        else if (fetchDuration < 3000) size = Math.min(Math.round(size * 1.5), 10000000);
+      } catch { break; }
     }
-  } catch {}
-  // Fallback: POST to httpbin
-  try {
-    const smallData = new Blob([new ArrayBuffer(500000)]);
-    const start = performance.now();
-    await fetch('https://httpbin.org/post', { method: 'POST', body: smallData, cache: 'no-store' });
-    const secs = (performance.now() - start) / 1000;
-    return (500000 * 8) / secs / 1e6;
-  } catch { return 0; }
+  }
+
+  const workers = [];
+  for (let i = 0; i < CONNECTIONS; i++) workers.push(worker(i));
+  await Promise.allSettled(workers);
+
+  const warmupEnd = testStart + WARMUP_MS;
+  const measured = transfers.filter(t => t.endTime > warmupEnd);
+  const measuredBytes = measured.reduce((s, t) => s + t.bytes, 0);
+  const elapsed = measured.length > 0 ? (Math.max(...measured.map(t => t.endTime)) - warmupEnd) / 1000 : 0;
+  const mbps = elapsed > 0 ? (measuredBytes * 8) / elapsed / 1e6 : 0;
+
+  return mbps;
 }
 
 function resetGauge() {
   document.getElementById('gauge-circle').style.strokeDashoffset = '364.42';
   document.getElementById('gauge-number').textContent = '0';
   document.getElementById('speed-ping').textContent = '--';
+  document.getElementById('speed-jitter').textContent = '--';
   document.getElementById('speed-download').textContent = '--';
   document.getElementById('speed-upload').textContent = '--';
 }
@@ -804,6 +871,7 @@ function buildText() {
   if (state.speed.ping !== null) {
     L.push('--- Speed Test ---');
     L.push(`Ping: ${state.speed.ping?.toFixed(0)} ms`);
+    L.push(`Jitter: ${state.speed.jitter?.toFixed(1)} ms`);
     L.push(`Download: ${state.speed.download?.toFixed(1)} Mbps`);
     L.push(`Upload: ${state.speed.upload?.toFixed(1)} Mbps`);
     L.push('');
@@ -903,6 +971,7 @@ function toggleTheme() {
   const next = current === 'dark' ? 'light' : 'dark';
   applyTheme(next);
   localStorage.setItem('netscope-theme', next);
+  updateSettingsThemeLabel();
   // Sync to Firebase if logged in
   if (typeof currentUser !== 'undefined' && currentUser && typeof saveUserPreferences === 'function') {
     saveUserPreferences({ theme: next });
@@ -1111,4 +1180,71 @@ async function runAll() {
   btn.disabled = false;
   btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run All';
   showToast('All tests complete');
+}
+
+// ============================================================
+// SETTINGS
+// ============================================================
+function initSettings() {
+  document.getElementById('settings-theme-toggle')?.addEventListener('click', toggleTheme);
+
+  document.getElementById('settings-clear-data')?.addEventListener('click', () => {
+    localStorage.removeItem('netscope-theme');
+    localStorage.removeItem('netscope-guest');
+    localStorage.removeItem('netscope-session');
+    showToast('Local data cleared');
+  });
+
+  document.getElementById('settings-sign-in')?.addEventListener('click', () => {
+    if (typeof showAuthGate === 'function') showAuthGate();
+  });
+
+  document.getElementById('settings-sign-out')?.addEventListener('click', () => {
+    if (typeof handleSignOut === 'function') handleSignOut();
+  });
+
+  updateSettingsThemeLabel();
+}
+
+function updateSettingsThemeLabel() {
+  const label = document.getElementById('settings-theme-label');
+  if (label) {
+    const current = document.documentElement.getAttribute('data-theme') || 'dark';
+    label.textContent = current === 'dark' ? 'Switch to Light' : 'Switch to Dark';
+  }
+}
+
+function updateSettingsAccount(user) {
+  const guestInfo = document.getElementById('settings-guest-info');
+  const userInfo = document.getElementById('settings-user-info');
+  const signoutSection = document.getElementById('settings-signout-section');
+
+  if (user) {
+    if (guestInfo) guestInfo.style.display = 'none';
+    if (userInfo) userInfo.style.display = '';
+    if (signoutSection) signoutSection.style.display = '';
+
+    const emailEl = document.getElementById('settings-email');
+    const nameEl = document.getElementById('settings-display-name');
+    const providerEl = document.getElementById('settings-provider');
+    const createdEl = document.getElementById('settings-created');
+
+    if (emailEl) emailEl.textContent = user.email || 'N/A';
+    if (nameEl) nameEl.textContent = user.displayName || 'N/A';
+
+    const providerData = user.providerData?.[0];
+    let provider = 'Email';
+    if (providerData) {
+      if (providerData.providerId === 'google.com') provider = 'Google';
+      else if (providerData.providerId === 'github.com') provider = 'GitHub';
+    }
+    if (providerEl) providerEl.textContent = provider;
+
+    const created = user.metadata?.creationTime;
+    if (createdEl) createdEl.textContent = created ? new Date(created).toLocaleDateString() : 'N/A';
+  } else {
+    if (guestInfo) guestInfo.style.display = '';
+    if (userInfo) userInfo.style.display = 'none';
+    if (signoutSection) signoutSection.style.display = 'none';
+  }
 }
