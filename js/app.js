@@ -13,36 +13,131 @@ const state = {
 document.addEventListener('DOMContentLoaded', () => {
   initTheme();
   initMobileMenu();
-  initNav();
+  initTabBar();
   initExport();
   initBreachTabs();
   initPasswordToggle();
   initEventListeners();
-  initScrollReveal();
   initPasswordGenerator();
 
   // Firebase (guarded - works without it)
   if (typeof firebase !== 'undefined' && typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey !== 'YOUR_API_KEY') {
     if (typeof initAuth === 'function') initAuth();
     if (typeof initFirestore === 'function') initFirestore();
+  } else {
+    // No Firebase: check guest flag or show auth gate
+    if (localStorage.getItem('netscope-guest') === 'true') {
+      showDashboard();
+    } else {
+      showAuthGate();
+    }
   }
 
-  fetchIPInfo();
   dismissLoadingScreen();
 });
 
-function initNav() {
-  const links = document.querySelectorAll('.nav-link');
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        links.forEach(l => l.classList.remove('active'));
-        const link = document.querySelector(`.nav-link[data-section="${entry.target.id}"]`);
-        if (link) link.classList.add('active');
-      }
+// ============================================================
+// TAB BAR
+// ============================================================
+let ipFetched = false;
+
+function initTabBar() {
+  document.querySelectorAll('.tab-bar-item').forEach(tab => {
+    tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+  });
+
+  // Mobile drawer tool links
+  document.querySelectorAll('#mobile-tool-links .mobile-nav-link[data-tab]').forEach(link => {
+    link.addEventListener('click', () => {
+      switchTab(link.dataset.tab);
+      closeMobileMenu();
     });
-  }, { threshold: 0.2, rootMargin: '-80px 0px 0px 0px' });
-  document.querySelectorAll('section[id]').forEach(s => observer.observe(s));
+  });
+
+  // Reposition indicator on resize
+  window.addEventListener('resize', () => {
+    if (document.getElementById('dashboard')?.style.display !== 'none') {
+      updateTabIndicator();
+    }
+  });
+}
+
+function switchTab(tabId) {
+  // Update tab buttons
+  document.querySelectorAll('.tab-bar-item').forEach(t => {
+    t.classList.toggle('active', t.dataset.tab === tabId);
+  });
+
+  // Update panels
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.toggle('active', p.dataset.panel === tabId);
+  });
+
+  updateTabIndicator();
+
+  // Lazy-fetch IP on first visit to IP tab
+  if (tabId === 'ip-location' && !ipFetched) {
+    ipFetched = true;
+    fetchIPInfo();
+  }
+
+  // Fix Leaflet map rendering in hidden tab
+  if (tabId === 'ip-location' && window._netscopeMap) {
+    setTimeout(() => window._netscopeMap.invalidateSize(), 100);
+  }
+}
+
+function updateTabIndicator() {
+  const indicator = document.getElementById('tab-bar-indicator');
+  const activeTab = document.querySelector('.tab-bar-item.active');
+  if (!indicator || !activeTab) return;
+
+  const bar = activeTab.parentElement;
+  const barRect = bar.getBoundingClientRect();
+  const tabRect = activeTab.getBoundingClientRect();
+
+  indicator.style.left = (tabRect.left - barRect.left + bar.scrollLeft) + 'px';
+  indicator.style.width = tabRect.width + 'px';
+}
+
+// ============================================================
+// VIEW SWITCHING (auth gate <-> dashboard)
+// ============================================================
+function showDashboard() {
+  const authGate = document.getElementById('auth-gate');
+  const dashboard = document.getElementById('dashboard');
+  const runAll = document.getElementById('btn-run-all');
+  const exportTrigger = document.getElementById('export-trigger');
+  const mobileToolLinks = document.getElementById('mobile-tool-links');
+
+  if (authGate) authGate.style.display = 'none';
+  if (dashboard) dashboard.style.display = '';
+  if (runAll) runAll.style.display = '';
+  if (exportTrigger) exportTrigger.style.display = '';
+  if (mobileToolLinks) mobileToolLinks.style.display = '';
+
+  // Position tab indicator after layout
+  requestAnimationFrame(() => updateTabIndicator());
+
+  // Auto-fetch IP on first dashboard load
+  if (!ipFetched) {
+    ipFetched = true;
+    fetchIPInfo();
+  }
+}
+
+function showAuthGate() {
+  const authGate = document.getElementById('auth-gate');
+  const dashboard = document.getElementById('dashboard');
+  const runAll = document.getElementById('btn-run-all');
+  const exportTrigger = document.getElementById('export-trigger');
+  const mobileToolLinks = document.getElementById('mobile-tool-links');
+
+  if (authGate) authGate.style.display = '';
+  if (dashboard) dashboard.style.display = 'none';
+  if (runAll) runAll.style.display = 'none';
+  if (exportTrigger) exportTrigger.style.display = 'none';
+  if (mobileToolLinks) mobileToolLinks.style.display = 'none';
 }
 
 function initExport() {
@@ -205,6 +300,7 @@ function initMap(lat, lng) {
     radius: 10, fillColor: '#3b82f6', color: '#3b82f6',
     weight: 2, opacity: 0.8, fillOpacity: 0.3,
   }).addTo(map);
+  window._netscopeMap = map;
   setTimeout(() => map.invalidateSize(), 400);
 }
 
@@ -907,21 +1003,6 @@ function dismissLoadingScreen() {
 }
 
 // ============================================================
-// SCROLL REVEAL
-// ============================================================
-function initScrollReveal() {
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-}
-
-// ============================================================
 // PASSWORD GENERATOR
 // ============================================================
 const CHARSETS = {
@@ -1001,7 +1082,7 @@ function updateStrength(password) {
 
 function copyPassword() {
   const pw = document.getElementById('pwgen-password').textContent;
-  if (!pw || pw === 'Click Generate') { showToast('Generate a password first'); return; }
+  if (!pw || pw === 'Your password will appear here') { showToast('Generate a password first'); return; }
   navigator.clipboard.writeText(pw)
     .then(() => showToast('Password copied'))
     .catch(() => showToast('Copy failed'));

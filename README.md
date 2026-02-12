@@ -118,13 +118,14 @@ NetScope/
 │   ├── logo-light.svg              # Logo for light theme
 │   └── social-preview.png          # Open Graph preview image
 ├── js/
-│   ├── app.js                      # Core application logic
-│   ├── auth.js                     # Auth modal, Google/GitHub/email sign-in
+│   ├── app.js                      # Core application logic + tab navigation
+│   ├── auth.js                     # Auth gate, Google/GitHub/email sign-in
 │   ├── firebase-config.js          # Firebase project config
 │   └── firestore.js                # Cloud save/load logic
 ├── .gitignore
 ├── about.html                      # About page
-├── index.html                      # Main app
+├── app.html                        # Main app (auth gate + dashboard)
+├── index.html                      # Landing page
 ├── LICENSE                         # MIT
 └── README.md
 ```

@@ -2,7 +2,7 @@
 
 let auth = null;
 let currentUser = null;
-let authModalOpen = false;
+let isGuest = false;
 
 function initAuth() {
   if (typeof firebase === 'undefined') return;
@@ -11,27 +11,50 @@ function initAuth() {
   }
   auth = firebase.auth();
 
+  isGuest = localStorage.getItem('netscope-guest') === 'true';
+
   auth.onAuthStateChanged(user => {
     currentUser = user;
-    updateAuthUI(user);
-    if (user && typeof loadUserPreferences === 'function') {
-      loadUserPreferences(user.uid);
+
+    if (user) {
+      localStorage.removeItem('netscope-guest');
+      isGuest = false;
+      updateAuthUI(user);
+      if (typeof showDashboard === 'function') showDashboard();
+      if (typeof loadUserPreferences === 'function') loadUserPreferences(user.uid);
+    } else if (isGuest) {
+      updateAuthUI(null);
+      if (typeof showDashboard === 'function') showDashboard();
+    } else {
+      updateAuthUI(null);
+      if (typeof showAuthGate === 'function') showAuthGate();
     }
   });
 
-  // Desktop login
-  document.getElementById('btn-login')?.addEventListener('click', openAuthModal);
-  document.getElementById('btn-logout')?.addEventListener('click', signOut);
+  bindAuthGateEvents();
+
+  // Desktop header login (guest upgrade)
+  document.getElementById('btn-login')?.addEventListener('click', () => {
+    isGuest = false;
+    localStorage.removeItem('netscope-guest');
+    if (typeof showAuthGate === 'function') showAuthGate();
+  });
+  document.getElementById('btn-logout')?.addEventListener('click', handleSignOut);
   document.getElementById('user-avatar-btn')?.addEventListener('click', toggleUserDropdown);
   document.getElementById('btn-my-results')?.addEventListener('click', () => { openResultsPanel(); closeUserDropdown(); });
   document.getElementById('btn-save-cloud')?.addEventListener('click', () => { if (typeof saveResults === 'function') saveResults(); });
 
-  // Mobile login
-  document.getElementById('mobile-btn-login')?.addEventListener('click', () => { closeMobileMenu(); openAuthModal(); });
-  document.getElementById('mobile-btn-logout')?.addEventListener('click', signOut);
+  // Mobile
+  document.getElementById('mobile-btn-login')?.addEventListener('click', () => {
+    closeMobileMenu();
+    isGuest = false;
+    localStorage.removeItem('netscope-guest');
+    if (typeof showAuthGate === 'function') showAuthGate();
+  });
+  document.getElementById('mobile-btn-logout')?.addEventListener('click', handleSignOut);
   document.getElementById('mobile-btn-results')?.addEventListener('click', openResultsPanel);
 
-  // Close dropdown when clicking outside
+  // Close dropdown on outside click
   document.addEventListener('click', e => {
     const dropdown = document.getElementById('user-dropdown');
     const btn = document.getElementById('user-avatar-btn');
@@ -39,17 +62,26 @@ function initAuth() {
       dropdown.classList.remove('open');
     }
   });
+}
 
-  // Auth modal controls
-  document.getElementById('auth-modal-close')?.addEventListener('click', closeAuthModal);
-  document.getElementById('auth-modal-backdrop')?.addEventListener('click', closeAuthModal);
+// ============================================================
+// AUTH GATE EVENTS
+// ============================================================
+
+function bindAuthGateEvents() {
+  // Guest skip
+  document.getElementById('btn-guest-skip')?.addEventListener('click', () => {
+    localStorage.setItem('netscope-guest', 'true');
+    isGuest = true;
+    if (typeof showDashboard === 'function') showDashboard();
+  });
 
   // Tab switching
   document.querySelectorAll('[data-auth-tab]').forEach(tab => {
     tab.addEventListener('click', () => switchAuthTab(tab.dataset.authTab));
   });
 
-  // Google & GitHub sign-in buttons inside modal
+  // Social auth
   document.getElementById('auth-google-btn')?.addEventListener('click', signInWithGoogle);
   document.getElementById('auth-github-btn')?.addEventListener('click', signInWithGitHub);
 
@@ -58,7 +90,7 @@ function initAuth() {
   document.getElementById('auth-form-signup')?.addEventListener('submit', handleSignUp);
   document.getElementById('auth-form-forgot')?.addEventListener('submit', handleForgotPassword);
 
-  // Forgot password link and back button
+  // Forgot password / back
   document.getElementById('auth-forgot-link')?.addEventListener('click', showForgotView);
   document.getElementById('auth-back-btn')?.addEventListener('click', showMainView);
 
@@ -66,39 +98,11 @@ function initAuth() {
   document.querySelectorAll('.auth-toggle-password').forEach(btn => {
     btn.addEventListener('click', () => togglePasswordVisibility(btn.dataset.target));
   });
-
-  // Close modal on Escape
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape' && authModalOpen) closeAuthModal();
-  });
 }
 
 // ============================================================
-// AUTH MODAL MANAGEMENT
+// AUTH TAB / VIEW MANAGEMENT
 // ============================================================
-
-function openAuthModal() {
-  if (!auth) { showToast('Firebase not configured yet'); return; }
-  const backdrop = document.getElementById('auth-modal-backdrop');
-  const modal = document.getElementById('auth-modal');
-  if (backdrop) backdrop.classList.add('open');
-  if (modal) modal.classList.add('open');
-  document.body.style.overflow = 'hidden';
-  authModalOpen = true;
-  switchAuthTab('signin');
-  showMainView();
-  clearAuthErrors();
-  clearAuthForms();
-}
-
-function closeAuthModal() {
-  const backdrop = document.getElementById('auth-modal-backdrop');
-  const modal = document.getElementById('auth-modal');
-  if (backdrop) backdrop.classList.remove('open');
-  if (modal) modal.classList.remove('open');
-  document.body.style.overflow = '';
-  authModalOpen = false;
-}
 
 function switchAuthTab(tab) {
   document.querySelectorAll('[data-auth-tab]').forEach(t => {
@@ -201,8 +205,6 @@ async function signInWithGoogle() {
   try {
     await auth.signInWithPopup(provider);
     showToast('Signed in successfully');
-    closeAuthModal();
-    closeMobileMenu();
   } catch (err) {
     if (err.code === 'auth/popup-closed-by-user') return;
     const msg = getFirebaseAuthErrorMessage(err.code);
@@ -217,8 +219,6 @@ async function signInWithGitHub() {
   try {
     await auth.signInWithPopup(provider);
     showToast('Signed in successfully');
-    closeAuthModal();
-    closeMobileMenu();
   } catch (err) {
     if (err.code === 'auth/popup-closed-by-user') return;
     if (err.code === 'auth/account-exists-with-different-credential') {
@@ -247,7 +247,6 @@ async function handleSignIn(e) {
   try {
     await auth.signInWithEmailAndPassword(email, password);
     showToast('Signed in successfully');
-    closeAuthModal();
   } catch (err) {
     const msg = getFirebaseAuthErrorMessage(err.code);
     if (msg) showAuthError('auth-error-signin', msg);
@@ -287,7 +286,6 @@ async function handleSignUp(e) {
       console.warn('Email verification send failed:', verifyErr);
     }
     showToast('Account created successfully');
-    closeAuthModal();
   } catch (err) {
     const msg = getFirebaseAuthErrorMessage(err.code);
     if (msg) showAuthError('auth-error-signup', msg);
@@ -325,9 +323,11 @@ async function handleForgotPassword(e) {
   }
 }
 
-async function signOut() {
+async function handleSignOut() {
   try {
     await auth.signOut();
+    localStorage.removeItem('netscope-guest');
+    isGuest = false;
     showToast('Signed out');
     closeUserDropdown();
     closeMobileMenu();
@@ -372,10 +372,11 @@ function updateAuthUI(user) {
 
     updateVerificationBanner(user);
   } else {
-    if (loginBtn) loginBtn.style.display = '';
+    // Show login button when guest (in dashboard), hide otherwise (on auth gate)
+    if (loginBtn) loginBtn.style.display = isGuest ? '' : 'none';
     if (userMenu) userMenu.style.display = 'none';
     if (saveBtn) saveBtn.style.display = 'none';
-    if (mobileLoginBtn) mobileLoginBtn.style.display = '';
+    if (mobileLoginBtn) mobileLoginBtn.style.display = isGuest ? '' : 'none';
     if (mobileUserInfo) mobileUserInfo.style.display = 'none';
     removeVerificationBanner();
   }
