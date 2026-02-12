@@ -10,10 +10,21 @@
 </p>
 
 <p align="center">
-  <a href="https://patrickking67.github.io/NetScope/"><img src="https://img.shields.io/badge/Live_Demo-Visit-3b82f6?style=for-the-badge" alt="Live Demo"></a>
-  <img src="https://img.shields.io/github/license/patrickking67/NetScope?style=for-the-badge&color=10b981" alt="License">
-  <img src="https://img.shields.io/badge/Build-Zero-8b5cf6?style=for-the-badge" alt="Zero Build">
-  <img src="https://img.shields.io/badge/Framework-None-ef4444?style=for-the-badge" alt="No Framework">
+  <a href="https://patrickking67.github.io/NetScope/"><img src="https://img.shields.io/badge/Live%20Demo-Visit%20Site-3b82f6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo"></a>
+  <a href="https://github.com/patrickking67/NetScope"><img src="https://img.shields.io/github/stars/patrickking67/NetScope?style=for-the-badge&logo=github&logoColor=white&color=181717" alt="GitHub Stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/patrickking67/NetScope?style=for-the-badge&logo=opensourceinitiative&logoColor=white&color=10b981" alt="License"></a>
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white" alt="HTML5">
+  <img src="https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white" alt="CSS3">
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=flat-square&logo=javascript&logoColor=000" alt="JavaScript">
+  <img src="https://img.shields.io/badge/Firebase-DD2C00?style=flat-square&logo=firebase&logoColor=white" alt="Firebase">
+  <img src="https://img.shields.io/badge/Leaflet-199900?style=flat-square&logo=leaflet&logoColor=white" alt="Leaflet">
+  <img src="https://img.shields.io/badge/Cloudflare-F38020?style=flat-square&logo=cloudflare&logoColor=white" alt="Cloudflare">
+  <img src="https://img.shields.io/badge/GitHub%20Pages-222?style=flat-square&logo=githubpages&logoColor=white" alt="GitHub Pages">
+  <img src="https://img.shields.io/badge/Zero%20Build-8b5cf6?style=flat-square" alt="Zero Build">
+  <img src="https://img.shields.io/badge/No%20Framework-ef4444?style=flat-square" alt="No Framework">
 </p>
 
 ---
