@@ -16,6 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
   initBreachTabs();
   initPasswordToggle();
   initEventListeners();
+  initScrollReveal();
+  initPasswordGenerator();
   fetchIPInfo();
 });
 
@@ -780,4 +782,130 @@ function esc(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+// ============================================================
+// SCROLL REVEAL
+// ============================================================
+function initScrollReveal() {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+}
+
+// ============================================================
+// PASSWORD GENERATOR
+// ============================================================
+const CHARSETS = {
+  upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
+  lower: 'abcdefghijklmnopqrstuvwxyz',
+  numbers: '0123456789',
+  symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?',
+};
+
+function initPasswordGenerator() {
+  const slider = document.getElementById('pwgen-length');
+  const lengthVal = document.getElementById('pwgen-length-val');
+  slider.addEventListener('input', () => { lengthVal.textContent = slider.value; });
+
+  document.getElementById('btn-generate').addEventListener('click', generatePassword);
+  document.getElementById('pwgen-copy').addEventListener('click', copyPassword);
+
+  // Run All button
+  document.getElementById('btn-run-all').addEventListener('click', runAll);
+}
+
+function generatePassword() {
+  const length = parseInt(document.getElementById('pwgen-length').value, 10);
+  let pool = '';
+  if (document.getElementById('pwgen-upper').checked) pool += CHARSETS.upper;
+  if (document.getElementById('pwgen-lower').checked) pool += CHARSETS.lower;
+  if (document.getElementById('pwgen-numbers').checked) pool += CHARSETS.numbers;
+  if (document.getElementById('pwgen-symbols').checked) pool += CHARSETS.symbols;
+
+  if (!pool) {
+    showToast('Select at least one character set');
+    return;
+  }
+
+  const arr = new Uint32Array(length);
+  crypto.getRandomValues(arr);
+  let password = '';
+  for (let i = 0; i < length; i++) {
+    password += pool[arr[i] % pool.length];
+  }
+
+  document.getElementById('pwgen-password').textContent = password;
+  updateStrength(password);
+}
+
+function updateStrength(password) {
+  const bar = document.getElementById('pwgen-strength-bar');
+  const label = document.getElementById('pwgen-strength-label');
+
+  // Calculate entropy-based strength
+  let poolSize = 0;
+  if (/[a-z]/.test(password)) poolSize += 26;
+  if (/[A-Z]/.test(password)) poolSize += 26;
+  if (/[0-9]/.test(password)) poolSize += 10;
+  if (/[^a-zA-Z0-9]/.test(password)) poolSize += 32;
+
+  const entropy = password.length * Math.log2(poolSize || 1);
+  let pct, color, text;
+
+  if (entropy < 40) {
+    pct = 20; color = 'var(--accent-red)'; text = 'Weak';
+  } else if (entropy < 60) {
+    pct = 40; color = 'var(--accent-orange)'; text = 'Fair';
+  } else if (entropy < 80) {
+    pct = 60; color = 'var(--accent-blue)'; text = 'Good';
+  } else if (entropy < 100) {
+    pct = 80; color = 'var(--accent-cyan)'; text = 'Strong';
+  } else {
+    pct = 100; color = 'var(--accent-green)'; text = 'Very Strong';
+  }
+
+  bar.style.width = pct + '%';
+  bar.style.background = color;
+  label.textContent = `${text} (${Math.round(entropy)} bits of entropy)`;
+  label.style.color = color;
+}
+
+function copyPassword() {
+  const pw = document.getElementById('pwgen-password').textContent;
+  if (!pw || pw === 'Click Generate') { showToast('Generate a password first'); return; }
+  navigator.clipboard.writeText(pw)
+    .then(() => showToast('Password copied'))
+    .catch(() => showToast('Copy failed'));
+}
+
+// ============================================================
+// RUN ALL
+// ============================================================
+async function runAll() {
+  const btn = document.getElementById('btn-run-all');
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+
+  // IP is already auto-fetched on load. Run the others.
+  const tasks = [];
+
+  // Speed test
+  if (!speedRunning) tasks.push(runSpeedTest());
+
+  // Generate a password
+  generatePassword();
+
+  // Wait for all async tasks
+  await Promise.allSettled(tasks);
+
+  btn.disabled = false;
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run All';
+  showToast('All tests complete');
 }
