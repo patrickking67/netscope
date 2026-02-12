@@ -825,24 +825,63 @@ function applyTheme(theme) {
 // ============================================================
 function initMobileMenu() {
   const hamburger = document.getElementById('hamburger');
-  const menu = document.getElementById('mobile-menu');
-  if (!hamburger || !menu) return;
+  const drawer = document.getElementById('mobile-menu');
+  const backdrop = document.getElementById('drawer-backdrop');
+  const closeBtn = document.getElementById('drawer-close');
+  if (!hamburger || !drawer) return;
+
+  function openDrawer() {
+    drawer.classList.add('open');
+    backdrop?.classList.add('open');
+    hamburger.classList.add('open');
+    hamburger.setAttribute('aria-expanded', 'true');
+    document.body.style.overflow = 'hidden';
+    closeBtn?.focus();
+    document.addEventListener('keydown', handleDrawerEscape);
+  }
+
+  function closeDrawer() {
+    drawer.classList.remove('open');
+    backdrop?.classList.remove('open');
+    hamburger.classList.remove('open');
+    hamburger.setAttribute('aria-expanded', 'false');
+    document.body.style.overflow = '';
+    document.removeEventListener('keydown', handleDrawerEscape);
+    hamburger.focus();
+  }
+
+  function handleDrawerEscape(e) {
+    if (e.key === 'Escape') closeDrawer();
+  }
 
   hamburger.addEventListener('click', () => {
-    const isOpen = menu.classList.toggle('open');
-    hamburger.classList.toggle('open');
-    hamburger.setAttribute('aria-expanded', isOpen);
-    document.body.style.overflow = isOpen ? 'hidden' : '';
+    drawer.classList.contains('open') ? closeDrawer() : openDrawer();
   });
 
-  // Close menu when a nav link is clicked
-  menu.querySelectorAll('.mobile-nav-link[href]').forEach(link => {
-    link.addEventListener('click', () => {
-      menu.classList.remove('open');
-      hamburger.classList.remove('open');
-      hamburger.setAttribute('aria-expanded', 'false');
-      document.body.style.overflow = '';
-    });
+  backdrop?.addEventListener('click', closeDrawer);
+  closeBtn?.addEventListener('click', closeDrawer);
+
+  // Close drawer when a nav link is clicked
+  drawer.querySelectorAll('.mobile-nav-link[href]').forEach(link => {
+    link.addEventListener('click', closeDrawer);
+  });
+
+  // Focus trap within drawer
+  drawer.addEventListener('keydown', (e) => {
+    if (e.key !== 'Tab') return;
+    const focusable = drawer.querySelectorAll(
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
   });
 
   // Mobile theme toggle

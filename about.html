@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>About - NetScope</title>
   <link rel="stylesheet" href="css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <link rel="icon" href="images/favicon.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -17,8 +17,8 @@
   <header class="header">
     <div class="header-inner">
       <a href="index.html" class="logo">
-        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
-        <span>NetScope</span>
+        <img class="logo-img logo-img--dark" src="images/logo-dark.svg" alt="NetScope" height="32">
+        <img class="logo-img logo-img--light" src="images/logo-light.svg" alt="NetScope" height="32">
       </a>
       <button class="hamburger" id="hamburger" aria-label="Open menu" aria-expanded="false">
         <span class="hamburger-line"></span>
@@ -37,8 +37,17 @@
     </div>
   </header>
 
-  <!-- Mobile Menu -->
-  <div class="mobile-menu" id="mobile-menu">
+  <!-- Mobile Drawer Backdrop -->
+  <div class="drawer-backdrop" id="drawer-backdrop"></div>
+
+  <!-- Mobile Drawer -->
+  <div class="mobile-drawer" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Navigation menu">
+    <div class="drawer-header">
+      <span class="drawer-title">Menu</span>
+      <button class="drawer-close" id="drawer-close" aria-label="Close menu">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
     <nav class="mobile-nav">
       <a href="index.html" class="mobile-nav-link"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg>Back to App</a>
       <div class="mobile-menu-divider"></div>
@@ -146,22 +155,37 @@
         document.getElementById('theme-toggle')?.click();
       });
 
-      // Hamburger
+      // Drawer
       const hamburger = document.getElementById('hamburger');
-      const menu = document.getElementById('mobile-menu');
-      if (hamburger && menu) {
+      const drawer = document.getElementById('mobile-menu');
+      const backdrop = document.getElementById('drawer-backdrop');
+      const closeBtn = document.getElementById('drawer-close');
+      if (hamburger && drawer) {
+        function openDrawer() {
+          drawer.classList.add('open');
+          backdrop?.classList.add('open');
+          hamburger.classList.add('open');
+          hamburger.setAttribute('aria-expanded', 'true');
+          document.body.style.overflow = 'hidden';
+          closeBtn?.focus();
+          document.addEventListener('keydown', handleEsc);
+        }
+        function closeDrawer() {
+          drawer.classList.remove('open');
+          backdrop?.classList.remove('open');
+          hamburger.classList.remove('open');
+          hamburger.setAttribute('aria-expanded', 'false');
+          document.body.style.overflow = '';
+          document.removeEventListener('keydown', handleEsc);
+        }
+        function handleEsc(e) { if (e.key === 'Escape') closeDrawer(); }
         hamburger.addEventListener('click', () => {
-          const isOpen = menu.classList.toggle('open');
-          hamburger.classList.toggle('open');
-          hamburger.setAttribute('aria-expanded', isOpen);
-          document.body.style.overflow = isOpen ? 'hidden' : '';
+          drawer.classList.contains('open') ? closeDrawer() : openDrawer();
         });
-        menu.querySelectorAll('.mobile-nav-link[href]').forEach(link => {
-          link.addEventListener('click', () => {
-            menu.classList.remove('open');
-            hamburger.classList.remove('open');
-            document.body.style.overflow = '';
-          });
+        backdrop?.addEventListener('click', closeDrawer);
+        closeBtn?.addEventListener('click', closeDrawer);
+        drawer.querySelectorAll('.mobile-nav-link[href]').forEach(link => {
+          link.addEventListener('click', closeDrawer);
         });
       }
 
