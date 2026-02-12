@@ -186,7 +186,7 @@ Push to main  →  .github/workflows/static.yml  →  Live on GitHub Pages
 
 NetScope was inspired by several outstanding tools and services:
 
-- **[DivergeIT Security Scanner](https://check.divergeit.com)** — Created by Connor Bescos and Brian Yeo. A major inspiration for NetScope's approach to client-side security scanning.
+- **[DivergeIT Security Scanner](https://check.divergeit.com)** — Created by Connor Bescos and Brian Yeo. An inspiration for NetScope's approach to client-side security scanning.
 - **[Ookla Speedtest](https://www.speedtest.net)** — The gold standard for internet speed testing. Inspired the multi-connection speed test with animated gauges and jitter measurement.
 - **[Have I Been Pwned](https://haveibeenpwned.com)** — Troy Hunt's pioneering breach notification service. NetScope uses HIBP's k-anonymity API for privacy-preserving password breach checks.
 
