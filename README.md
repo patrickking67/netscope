@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://patrickking67.github.io/NetScope/">
+  <a href="https://patrickking67.github.io/netscope/">
     <img src="assets/images/logo-light.svg" alt="NetScope" height="60">
   </a>
 </p>
@@ -10,9 +10,9 @@
 </p>
 
 <p align="center">
-  <a href="https://patrickking67.github.io/NetScope/"><img src="https://img.shields.io/badge/Live%20Demo-Visit%20Site-3b82f6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo"></a>
-  <a href="https://github.com/patrickking67/NetScope"><img src="https://img.shields.io/github/stars/patrickking67/NetScope?style=for-the-badge&logo=github&logoColor=white&color=181717" alt="GitHub Stars"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/patrickking67/NetScope?style=for-the-badge&logo=opensourceinitiative&logoColor=white&color=10b981" alt="License"></a>
+  <a href="https://patrickking67.github.io/netscope/"><img src="https://img.shields.io/badge/Live%20Demo-Visit%20Site-3b82f6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo"></a>
+  <a href="https://github.com/patrickking67/netscope"><img src="https://img.shields.io/github/stars/patrickking67/netscope?style=for-the-badge&logo=github&logoColor=white&color=181717" alt="GitHub Stars"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/patrickking67/netscope?style=for-the-badge&logo=opensourceinitiative&logoColor=white&color=10b981" alt="License"></a>
 </p>
 
 <p align="center">
@@ -51,7 +51,7 @@ It gives you instant insight into your network footprint: where your traffic ori
 Sign in with Google, GitHub, or email to save results across devices via Firebase. Or skip sign-in entirely — every feature works without an account.
 
 <p align="center">
-  <a href="https://patrickking67.github.io/NetScope/">
+  <a href="https://patrickking67.github.io/netscope/">
     <img src="assets/images/social-preview.png" alt="NetScope Screenshot" width="720">
   </a>
 </p>
@@ -105,8 +105,8 @@ No dependencies to install. Clone and serve.
 
 ```bash
 # Clone the repo
-git clone https://github.com/patrickking67/NetScope.git
-cd NetScope
+git clone https://github.com/patrickking67/netscope.git
+cd netscope
 
 # Serve locally (pick one)
 npx serve .
@@ -167,7 +167,7 @@ Copyright (c) 2026 Patrick King
 ---
 
 <p align="center">
-  <a href="https://patrickking67.github.io/NetScope/">
+  <a href="https://patrickking67.github.io/netscope/">
     <img src="assets/images/logo-icon.svg" alt="NetScope" height="32">
   </a>
   <br>

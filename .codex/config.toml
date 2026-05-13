@@ -1,0 +1,4 @@
+# Project-scoped Codex config for netscope.
+# Loaded only when this project is trusted in ~/.codex/config.toml.
+
+# No project-specific overrides; inherit user defaults.
