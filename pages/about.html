@@ -100,7 +100,7 @@
         <li>All processing happens in your browser. There is no backend server.</li>
         <li>Passwords are SHA-1 hashed locally. Only the first 5 characters of the hash are ever transmitted (k-anonymity model).</li>
         <li>No analytics, cookies, tracking pixels, or fingerprinting of any kind.</li>
-        <li>Sign-in is optional. You can use Google, GitHub, or email/password to save results &mdash; or skip sign-in entirely as a guest.</li>
+        <li>Sign-in is optional. You can use Google, GitHub, or email/password to save results, or skip sign-in entirely as a guest.</li>
         <li>If signed in, test results are stored in your private Firebase collection. No one else can see them.</li>
         <li>The password generator uses the Web Crypto API (<code>crypto.getRandomValues</code>) for secure randomness.</li>
       </ul>
@@ -110,14 +110,14 @@
       <h2 class="about-heading">Tech Stack</h2>
       <p class="about-text">Pure HTML, CSS, and vanilla JavaScript. No frameworks, no build step, no dependencies beyond a few CDN libraries:</p>
       <ul class="about-list">
-        <li><strong>Leaflet + OpenStreetMap</strong> &mdash; Interactive maps</li>
-        <li><strong>Firebase</strong> &mdash; Google, GitHub, and email/password auth + Firestore cloud storage</li>
-        <li><strong>jsPDF</strong> &mdash; PDF report generation</li>
-        <li><strong>ipify / ipapi.co</strong> &mdash; IP detection and geolocation</li>
-        <li><strong>Have I Been Pwned</strong> &mdash; Password breach check (k-anonymity)</li>
-        <li><strong>XposedOrNot</strong> &mdash; Email breach lookup</li>
-        <li><strong>Google DNS-over-HTTPS</strong> &mdash; DNS record resolution</li>
-        <li><strong>Cloudflare</strong> &mdash; Speed test infrastructure</li>
+        <li><strong>Leaflet + OpenStreetMap</strong>, Interactive maps</li>
+        <li><strong>Firebase</strong>, Google, GitHub, and email/password auth + Firestore cloud storage</li>
+        <li><strong>jsPDF</strong>, PDF report generation</li>
+        <li><strong>ipify / ipapi.co</strong>, IP detection and geolocation</li>
+        <li><strong>Have I Been Pwned</strong>, Password breach check (k-anonymity)</li>
+        <li><strong>XposedOrNot</strong>, Email breach lookup</li>
+        <li><strong>Google DNS-over-HTTPS</strong>, DNS record resolution</li>
+        <li><strong>Cloudflare</strong>, Speed test infrastructure</li>
       </ul>
     </section>
 
@@ -125,16 +125,15 @@
       <h2 class="about-heading">Inspiration</h2>
       <p class="about-text">NetScope was inspired by several outstanding tools and services:</p>
       <ul class="about-list">
-        <li><strong><a href="https://check.divergeit.com" target="_blank" rel="noopener">DivergeIT Security Scanner</a></strong> &mdash; Created by Connor Bescos and Brian Yeo. An inspiration for NetScope's approach to client-side security scanning.</li>
-        <li><strong><a href="https://www.speedtest.net" target="_blank" rel="noopener">Ookla Speedtest</a></strong> &mdash; The gold standard for internet speed testing. Inspired NetScope's multi-connection speed test with animated gauges and jitter measurement.</li>
-        <li><strong><a href="https://haveibeenpwned.com" target="_blank" rel="noopener">Have I Been Pwned</a></strong> &mdash; Troy Hunt's pioneering breach notification service. NetScope uses HIBP's k-anonymity API for privacy-preserving password breach checks.</li>
+        <li><strong><a href="https://www.speedtest.net" target="_blank" rel="noopener">Ookla Speedtest</a></strong>, The gold standard for internet speed testing. Inspired NetScope's multi-connection speed test with animated gauges and jitter measurement.</li>
+        <li><strong><a href="https://haveibeenpwned.com" target="_blank" rel="noopener">Have I Been Pwned</a></strong>, Troy Hunt's pioneering breach notification service. NetScope uses HIBP's k-anonymity API for privacy-preserving password breach checks.</li>
       </ul>
     </section>
 
     <section class="card card--wide reveal">
       <h2 class="about-heading">Open Source</h2>
       <p class="about-text">NetScope is open source under the MIT License. Contributions, issues, and forks are welcome.</p>
-      <a href="https://github.com/patrickking67/NetScope" target="_blank" rel="noopener" class="btn btn--primary" style="margin-top:12px;">
+      <a href="https://github.com/patrickking67/netscope" target="_blank" rel="noopener" class="btn btn--primary" style="margin-top:12px;">
         <svg viewBox="0 0 24 24" fill="currentColor" width="16" height="16"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
         View on GitHub
       </a>
@@ -142,11 +141,11 @@
   </main>
 
   <footer class="footer">
-    <p class="footer-copy">&copy; 2026 Patrick King &middot; Licensed under <a href="https://github.com/patrickking67/NetScope/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a></p>
+    <p class="footer-copy">&copy; 2026 Patrick King &middot; Licensed under <a href="https://github.com/patrickking67/netscope/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a></p>
     <div class="footer-links">
       <a href="../index.html" class="footer-link">Home</a>
       <a href="app.html" class="footer-link">App</a>
-      <a href="https://github.com/patrickking67/NetScope" target="_blank" rel="noopener" class="footer-link">
+      <a href="https://github.com/patrickking67/netscope" target="_blank" rel="noopener" class="footer-link">
         <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
         GitHub
       </a>

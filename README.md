@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>A client-side network security toolkit.</strong><br>
-  IP lookup, speed testing, breach detection, password generation, and DNS analysis — all in your browser.
+  IP lookup, speed testing, breach detection, password generation, and DNS analysis, all in your browser.
 </p>
 
 <p align="center">
@@ -44,11 +44,11 @@
 
 ## About
 
-NetScope is a lightweight, open-source network security toolkit that runs entirely in your browser. No backend servers, no build tools, no frameworks — just plain HTML, CSS, and JavaScript.
+NetScope is a lightweight, open-source network security toolkit that runs entirely in your browser. No backend servers, build tools, or frameworks. Just plain HTML, CSS, and JavaScript.
 
 It gives you instant insight into your network footprint: where your traffic originates, how fast your connection is, whether your credentials have been compromised, and how well a domain's DNS and email security are configured.
 
-Sign in with Google, GitHub, or email to save results across devices via Firebase. Or skip sign-in entirely — every feature works without an account.
+Sign in with Google, GitHub, or email to save results across devices via Firebase. Or skip sign-in entirely. Every feature works without an account.
 
 <p align="center">
   <a href="https://patrickking67.github.io/netscope/">
@@ -58,22 +58,22 @@ Sign in with Google, GitHub, or email to save results across devices via Firebas
 
 ## Features
 
-| | Feature | Description |
-|---|---------|-------------|
-| :globe_with_meridians: | **IP & Geolocation** | Detect your public IP, ISP, ASN, proxy/VPN status, and map your approximate location |
-| :zap: | **Speed Test** | Multi-connection download, upload, ping, and jitter with animated gauges via Cloudflare |
-| :shield: | **Breach Check** | Check emails (XposedOrNot) and passwords (HIBP k-anonymity) against known breaches |
-| :lock: | **Password Generator** | One-click presets (Password, PIN, Passphrase, Hex Key) plus custom length, character sets, and strength meter |
-| :satellite: | **DNS & Security Scan** | Lookup DNS records, check SPF/DMARC/DKIM, DNSSEC, and WebRTC leak detection |
-| :rocket: | **Full Scan** | Run every security test in sequence with a step-by-step progress overlay |
-| :outbox_tray: | **Export** | Copy results, share via email, or download a PDF report |
-| :art: | **Dark / Light Theme** | Toggle between themes with persistent preference |
-| :bust_in_silhouette: | **Authentication** | Sign in with Google, GitHub, or email/password via Firebase |
-| :cloud: | **Cloud Save** | Save and retrieve test results across devices (requires sign-in) |
+| Feature | Description |
+| --- | --- |
+| **IP & Geolocation** | Detect your public IP, ISP, ASN, proxy/VPN status, and map your approximate location |
+| **Speed Test** | Multi-connection download, upload, ping, and jitter with animated gauges via Cloudflare |
+| **Breach Check** | Check emails (XposedOrNot) and passwords (HIBP k-anonymity) against known breaches |
+| **Password Generator** | One-click presets (Password, PIN, Passphrase, Hex Key) plus custom length, character sets, and strength meter |
+| **DNS & Security Scan** | Lookup DNS records, check SPF/DMARC/DKIM, DNSSEC, and WebRTC leak detection |
+| **Full Scan** | Run every security test in sequence with a step-by-step progress overlay |
+| **Export** | Copy results, share via email, or download a PDF report |
+| **Dark / Light Theme** | Toggle between themes with persistent preference |
+| **Authentication** | Sign in with Google, GitHub, or email/password via Firebase |
+| **Cloud Save** | Save and retrieve test results across devices (requires sign-in) |
 
 ## Tech Stack
 
-Pure HTML, CSS, and JavaScript. The repo root **is** the deployable output — no bundler, no transpiler, no `node_modules`.
+Pure HTML, CSS, and JavaScript. The repo root **is** the deployable output, with no bundler, transpiler, or `node_modules`.
 
 ### APIs & Services
 
@@ -117,7 +117,7 @@ python3 -m http.server 3000
 
 ### Firebase Setup (Optional)
 
-Firebase powers authentication (Google, GitHub, email/password) and cloud save. The app works fully without it — these features just won't appear.
+Firebase powers authentication (Google, GitHub, email/password) and cloud save. The app works fully without it. These features simply do not appear.
 
 To configure Firebase for your own fork:
 
@@ -140,7 +140,7 @@ Push to main  →  .github/workflows/static.yml  →  Live on GitHub Pages
 
 1. Fork this repository
 2. Go to **Settings > Pages** and set source to **GitHub Actions**
-3. Push to `main` — the site updates within minutes
+3. Push to `main`. The site updates within minutes.
 
 ## Privacy
 
@@ -154,9 +154,8 @@ Push to main  →  .github/workflows/static.yml  →  Live on GitHub Pages
 
 NetScope was inspired by several outstanding tools and services:
 
-- **[DivergeIT Security Scanner](https://check.divergeit.com)** — Created by Connor Bescos and Brian Yeo. An inspiration for NetScope's approach to client-side security scanning.
-- **[Ookla Speedtest](https://www.speedtest.net)** — The gold standard for internet speed testing. Inspired the multi-connection speed test with animated gauges and jitter measurement.
-- **[Have I Been Pwned](https://haveibeenpwned.com)** — Troy Hunt's pioneering breach notification service. NetScope uses HIBP's k-anonymity API for privacy-preserving password breach checks.
+- **[Ookla Speedtest](https://www.speedtest.net)**: inspired the multi-connection speed test with animated gauges and jitter measurement.
+- **[Have I Been Pwned](https://haveibeenpwned.com)**: NetScope uses HIBP's k-anonymity API for privacy-preserving password breach checks.
 
 ## License
 
@@ -170,6 +169,4 @@ Copyright (c) 2026 Patrick King
   <a href="https://patrickking67.github.io/netscope/">
     <img src="assets/images/logo-icon.svg" alt="NetScope" height="32">
   </a>
-  <br>
-  <sub>Built with zero dependencies, Claude Code, and caffeine.</sub>
 </p>

@@ -16,7 +16,7 @@ This guide walks through setting up Firebase for your own fork of NetScope. Fire
 2. Enter an app nickname (e.g. `NetScope Web`)
 3. Skip Firebase Hosting setup
 4. Click **Register app**
-5. Copy the `firebaseConfig` object — you'll need it in step 5
+5. Copy the `firebaseConfig` object. You will need it in step 5.
 
 ## 3. Enable Google Authentication
 
