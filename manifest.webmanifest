@@ -1,0 +1,19 @@
+{
+  "name": "NetScope Network Security Toolkit",
+  "short_name": "NetScope",
+  "description": "A privacy-conscious workspace for network, connection, breach, password, and DNS diagnostics.",
+  "id": "./pages/app.html",
+  "start_url": "./pages/app.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#090d18",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "assets/images/logo-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

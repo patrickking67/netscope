@@ -34,6 +34,14 @@ for script in sorted((root / "assets" / "js").glob("*.js")):
     if result.returncode:
         errors.append(f"{script.relative_to(root)}: {result.stderr.strip()}")
 
+for required_file in (root / "manifest.webmanifest", root / "sw.js", root / "assets" / "js" / "pwa.js"):
+    if not required_file.exists():
+        errors.append(f"missing PWA asset: {required_file.relative_to(root)}")
+
+service_worker = subprocess.run(["node", "--check", str(root / "sw.js")], capture_output=True, text=True)
+if service_worker.returncode:
+    errors.append(f"sw.js: {service_worker.stderr.strip()}")
+
 claude = (root / "CLAUDE.md").read_text().strip()
 if claude != "@AGENTS.md":
     errors.append("CLAUDE.md must contain only @AGENTS.md")

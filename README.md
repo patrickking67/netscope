@@ -44,7 +44,7 @@
 
 ## About
 
-NetScope is a lightweight, open-source network security toolkit that runs entirely in your browser. No backend servers, build tools, or frameworks. Just plain HTML, CSS, and JavaScript.
+NetScope is a lightweight, installable network security toolkit built with plain HTML, CSS, and JavaScript. Its interface runs in the browser, while individual tests call documented network and breach-data services for results.
 
 It gives you instant insight into your network footprint: where your traffic originates, how fast your connection is, whether your credentials have been compromised, and how well a domain's DNS and email security are configured.
 
@@ -68,6 +68,7 @@ Sign in with Google, GitHub, or email to save results across devices via Firebas
 | **Full Scan** | Run every security test in sequence with a step-by-step progress overlay |
 | **Export** | Copy results, share via email, or download a PDF report |
 | **Dark / Light Theme** | Toggle between themes with persistent preference |
+| **Installable PWA** | Install the application shell and reopen the interface offline |
 | **Authentication** | Sign in with Google, GitHub, or email/password via Firebase |
 | **Cloud Save** | Save and retrieve test results across devices (requires sign-in) |
 
@@ -145,7 +146,7 @@ Push to main  →  .github/workflows/static.yml  →  Live on GitHub Pages
 ## Privacy
 
 - **Passwords never leave your browser.** They're SHA-1 hashed locally; only the first 5 hash characters are sent to HIBP (k-anonymity).
-- **All processing is client-side.** No server receives your raw data.
+- **Sensitive password processing is client-side.** Raw passwords never leave the browser; other tools send only the inputs required by their documented services.
 - **No analytics or tracking.** Zero telemetry.
 - **Sign-in is optional.** Every feature works without an account.
 - **Cloud saves are private.** If signed in, results are stored in your own Firestore collection.
