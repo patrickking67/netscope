@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="theme-color" content="#06060b">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>About - NetScope</title>
   <meta name="description" content="How NetScope handles network diagnostics, privacy, external services, and optional cloud sync.">
@@ -16,6 +17,7 @@
   <script src="../assets/js/theme-init.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <header class="header">
     <div class="header-inner">
       <a href="../index.html" class="logo">
@@ -59,13 +61,13 @@
     </nav>
   </div>
 
-  <main class="main about-main">
-    <section class="card card--wide reveal">
+  <main class="main about-main" id="main">
+    <section class="card card--wide">
       <h1 class="about-title">About NetScope</h1>
       <p class="about-lead">A free, open-source network security toolkit that runs entirely in your browser. No tracking, no backend.</p>
     </section>
 
-    <section class="card card--wide reveal">
+    <section class="card card--wide">
       <h2 class="about-heading">What It Does</h2>
       <div class="about-features">
         <div class="about-feature">
@@ -96,7 +98,7 @@
       </div>
     </section>
 
-    <section class="card card--wide reveal">
+    <section class="card card--wide">
       <h2 class="about-heading">Privacy</h2>
       <ul class="about-list">
         <li>The interface and sensitive password hashing run in your browser. Network tests call the services listed below to retrieve results.</li>
@@ -108,7 +110,7 @@
       </ul>
     </section>
 
-    <section class="card card--wide reveal">
+    <section class="card card--wide">
       <h2 class="about-heading">Tech Stack</h2>
       <p class="about-text">Pure HTML, CSS, and vanilla JavaScript. No frameworks, no build step, no dependencies beyond a few CDN libraries:</p>
       <ul class="about-list">
@@ -123,7 +125,7 @@
       </ul>
     </section>
 
-    <section class="card card--wide reveal">
+    <section class="card card--wide">
       <h2 class="about-heading">Inspiration</h2>
       <p class="about-text">NetScope was inspired by several outstanding tools and services:</p>
       <ul class="about-list">
@@ -132,7 +134,7 @@
       </ul>
     </section>
 
-    <section class="card card--wide reveal">
+    <section class="card card--wide">
       <h2 class="about-heading">Open Source</h2>
       <p class="about-text">NetScope is open source under the MIT License. Contributions, issues, and forks are welcome.</p>
       <a href="https://github.com/patrickking67/netscope" target="_blank" rel="noopener" class="btn btn--primary" style="margin-top:12px;">
