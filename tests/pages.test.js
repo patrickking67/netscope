@@ -43,6 +43,13 @@ for (const page of pages) {
     assert.ok(!/href\s*=\s*["']javascript:/i.test(html), 'javascript: URL found');
   });
 
+  test(`${page} has a skip link to its main landmark and a theme color`, () => {
+    const html = read(page);
+    assert.match(html, /<a class="skip-link" href="#main">/);
+    assert.equal([...html.matchAll(/<main\b[^>]*\bid="main"/g)].length, 1, 'exactly one <main id="main">');
+    assert.match(html, /<meta name="theme-color" content="#[0-9a-f]{6}">/);
+  });
+
   test(`${page} links that open new tabs use rel=noopener`, () => {
     const html = read(page);
     for (const [tag] of html.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)) {

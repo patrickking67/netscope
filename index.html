@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="theme-color" content="#06060b">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>NetScope | Private Network Security Toolkit</title>
   <meta name="description" content="Check your public IP, internet speed, breach exposure, DNS security, and more. Free, open-source, client-side.">
@@ -26,6 +27,7 @@
   <script src="assets/js/theme-init.js" data-redirect-target="pages/app.html"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <!-- Loading Screen -->
   <div id="loading-screen" class="loading-screen">
     <div class="loading-screen-inner">
@@ -79,11 +81,12 @@
     </nav>
   </div>
 
+  <main id="main">
   <!-- Hero Section -->
   <section class="hero" id="hero">
     <div class="hero-bg-pattern"></div>
     <div class="hero-content">
-      <div class="hero-badge">Open-Source Security Toolkit</div>
+      <p class="hero-badge">Runs in your browser. No account needed.</p>
       <h1 class="hero-title">
         <img class="hero-logo hero-logo--dark" src="assets/images/logo-dark.svg" alt="NetScope" height="48">
         <img class="hero-logo hero-logo--light" src="assets/images/logo-light.svg" alt="NetScope" height="48">
@@ -120,7 +123,7 @@
   </section>
 
   <!-- Why NetScope -->
-  <section class="landing-section reveal">
+  <section class="landing-section">
     <h2 class="landing-section-title">Why NetScope</h2>
     <p class="landing-section-subtitle">Built for transparency, simplicity, and privacy</p>
     <div class="landing-grid">
@@ -149,7 +152,7 @@
   </section>
 
   <!-- How It Works -->
-  <section class="landing-section reveal">
+  <section class="landing-section">
     <h2 class="landing-section-title">How It Works</h2>
     <p class="landing-section-subtitle">Three steps to a full security snapshot</p>
     <div class="steps-grid">
@@ -172,7 +175,7 @@
   </section>
 
   <!-- Final CTA -->
-  <section class="landing-cta reveal">
+  <section class="landing-cta">
     <h2 class="landing-section-title">Ready to scan?</h2>
     <p class="landing-section-subtitle">Get a full security snapshot in under a minute</p>
     <a href="pages/app.html" class="hero-cta">
@@ -180,6 +183,7 @@
       Launch App
     </a>
   </section>
+  </main>
 
   <footer class="footer">
     <p class="footer-copy">&copy; 2026 Patrick King &middot; Licensed under <a href="https://github.com/patrickking67/netscope/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a></p>
