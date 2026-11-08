@@ -50,6 +50,10 @@ Replace the default rules with:
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Theme preference stored on the user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
     match /users/{userId}/results/{resultId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
@@ -57,7 +61,7 @@ service cloud.firestore {
 }
 ```
 
-This ensures users can only read and write their own saved results.
+This ensures users can only read and write their own preferences and saved results. Without the `users/{userId}` rule, theme sync fails with a permission error because `saveUserPreferences` writes to the user document itself.
 
 ## 5. Update Firebase Config
 
