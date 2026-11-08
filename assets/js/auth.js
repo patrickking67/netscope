@@ -486,17 +486,18 @@ async function openResultsPanel() {
     return;
   }
 
+  // Saved results are rendered from Firestore data, so every field is escaped.
   list.innerHTML = results.map(r => `
     <div class="result-history-card">
       <div class="result-history-header">
-        <span class="result-history-date">${r.timestamp.toLocaleDateString()} ${r.timestamp.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})}</span>
-        <button class="result-history-delete" data-id="${r.id}" title="Delete">&times;</button>
+        <span class="result-history-date">${esc(r.timestamp.toLocaleDateString())} ${esc(r.timestamp.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}))}</span>
+        <button class="result-history-delete" data-id="${esc(r.id)}" title="Delete">&times;</button>
       </div>
       <div class="result-history-body">
         ${r.ip ? `<div class="result-history-item"><span class="result-history-label">IP</span><span>${esc(r.ip)}</span></div>` : ''}
         ${r.geo ? `<div class="result-history-item"><span class="result-history-label">Location</span><span>${esc(r.geo.city || '')}, ${esc(r.geo.country || '')}</span></div>` : ''}
-        ${r.speed ? `<div class="result-history-item"><span class="result-history-label">Speed</span><span>${r.speed.download} Mbps down / ${r.speed.upload} Mbps up / ${r.speed.ping} ms</span></div>` : ''}
-        ${r.scan ? `<div class="result-history-item"><span class="result-history-label">DNS Scan</span><span>${esc(r.scan.domain)} (${r.scan.checksCount} checks)</span></div>` : ''}
+        ${r.speed ? `<div class="result-history-item"><span class="result-history-label">Speed</span><span>${esc(r.speed.download)} Mbps down / ${esc(r.speed.upload)} Mbps up / ${esc(r.speed.ping)} ms</span></div>` : ''}
+        ${r.scan ? `<div class="result-history-item"><span class="result-history-label">DNS Scan</span><span>${esc(r.scan.domain)} (${esc(r.scan.checksCount)} checks)</span></div>` : ''}
       </div>
     </div>
   `).join('');
