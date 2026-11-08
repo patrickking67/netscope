@@ -1,0 +1,17 @@
+name: Feature request
+description: Suggest a new check or an improvement to an existing tool
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed change
+      description: If it calls a new external service, name it and say what data it would receive.
+    validations:
+      required: true
