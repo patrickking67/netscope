@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>About - NetScope</title>
   <meta name="description" content="How NetScope handles network diagnostics, privacy, external services, and optional cloud sync.">
   <link rel="manifest" href="../manifest.webmanifest">
@@ -11,9 +13,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <script>
-    (function(){var t=localStorage.getItem('netscope-theme');if(t==='light')document.documentElement.setAttribute('data-theme','light');})();
-  </script>
+  <script src="../assets/js/theme-init.js"></script>
 </head>
 <body>
   <header class="header">
@@ -155,64 +155,6 @@
   </footer>
 
   <script src="../assets/js/pwa.js"></script>
-  <script>
-    // About page: theme toggle + mobile menu only
-    document.addEventListener('DOMContentLoaded', () => {
-      // Theme toggle
-      document.getElementById('theme-toggle')?.addEventListener('click', () => {
-        const current = document.documentElement.getAttribute('data-theme') || 'dark';
-        const next = current === 'dark' ? 'light' : 'dark';
-        document.documentElement.setAttribute('data-theme', next);
-        localStorage.setItem('netscope-theme', next);
-        const label = document.getElementById('mobile-theme-label');
-        if (label) label.textContent = next === 'dark' ? 'Light Mode' : 'Dark Mode';
-      });
-      document.getElementById('mobile-theme-toggle')?.addEventListener('click', () => {
-        document.getElementById('theme-toggle')?.click();
-      });
-
-      // Drawer
-      const hamburger = document.getElementById('hamburger');
-      const drawer = document.getElementById('mobile-menu');
-      const backdrop = document.getElementById('drawer-backdrop');
-      const closeBtn = document.getElementById('drawer-close');
-      if (hamburger && drawer) {
-        function openDrawer() {
-          drawer.classList.add('open');
-          backdrop?.classList.add('open');
-          hamburger.classList.add('open');
-          hamburger.setAttribute('aria-expanded', 'true');
-          document.body.style.overflow = 'hidden';
-          closeBtn?.focus();
-          document.addEventListener('keydown', handleEsc);
-        }
-        function closeDrawer() {
-          drawer.classList.remove('open');
-          backdrop?.classList.remove('open');
-          hamburger.classList.remove('open');
-          hamburger.setAttribute('aria-expanded', 'false');
-          document.body.style.overflow = '';
-          document.removeEventListener('keydown', handleEsc);
-        }
-        function handleEsc(e) { if (e.key === 'Escape') closeDrawer(); }
-        hamburger.addEventListener('click', () => {
-          drawer.classList.contains('open') ? closeDrawer() : openDrawer();
-        });
-        backdrop?.addEventListener('click', closeDrawer);
-        closeBtn?.addEventListener('click', closeDrawer);
-        drawer.querySelectorAll('.mobile-nav-link[href]').forEach(link => {
-          link.addEventListener('click', closeDrawer);
-        });
-      }
-
-      // Scroll reveal
-      const observer = new IntersectionObserver(entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) { entry.target.classList.add('visible'); observer.unobserve(entry.target); }
-        });
-      }, { threshold: 0.08, rootMargin: '0px 0px -40px 0px' });
-      document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-    });
-  </script>
+  <script src="../assets/js/site.js"></script>
 </body>
 </html>
