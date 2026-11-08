@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com https://unpkg.com https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://*.tile.openstreetmap.org https://*.googleusercontent.com https://avatars.githubusercontent.com; connect-src 'self' https://api.ipify.org https://api64.ipify.org https://api.seeip.org https://ipapi.co https://ipwho.is https://freeipapi.com https://speed.cloudflare.com https://www.google.com https://cdnjs.cloudflare.com https://api.xposedornot.com https://api.pwnedpasswords.com https://dns.google https://*.googleapis.com; frame-src https://netscope-df0ee.firebaseapp.com https://apis.google.com https://accounts.google.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'">
+  <meta name="theme-color" content="#06060b">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>NetScope - App</title>
   <meta name="description" content="Network security toolkit. Check IP, speed, breaches, DNS, and generate passwords.">
@@ -17,6 +18,7 @@
   <script src="../assets/js/theme-init.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to content</a>
   <!-- Loading Screen -->
   <div id="loading-screen" class="loading-screen">
     <div class="loading-screen-inner">
@@ -60,11 +62,11 @@
             <button class="user-dropdown-item" id="btn-logout"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign Out</button>
           </div>
         </div>
-        <button class="btn btn--run-all" id="btn-full-scan" title="Full Security Scan" style="display:none;">
+        <button type="button" class="btn btn--run-all" id="btn-full-scan" title="Full Security Scan" aria-label="Run full security scan" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Full Scan
         </button>
-        <button class="export-trigger" id="export-trigger" title="Export Results" style="display:none;">
+        <button type="button" class="export-trigger" id="export-trigger" title="Export Results" aria-label="Export results" aria-haspopup="true" style="display:none;">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
         </button>
       </div>
@@ -107,6 +109,7 @@
     </nav>
   </div>
 
+  <main id="main">
   <!-- ===== AUTH GATE ===== -->
   <div id="auth-gate" class="auth-gate">
     <div class="auth-gate-inner">
@@ -231,24 +234,24 @@
 
     <!-- Tab Bar -->
     <div class="tab-bar" id="tab-bar">
-      <div class="tab-bar-inner">
-        <button class="tab-bar-item active" data-tab="ip-location">
+      <div class="tab-bar-inner" role="tablist" aria-label="Tools">
+        <button type="button" class="tab-bar-item active" data-tab="ip-location" role="tab" id="tab-ip-location" aria-controls="panel-ip-location" aria-selected="true">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
           <span>IP & Location</span>
         </button>
-        <button class="tab-bar-item" data-tab="speed-test">
+        <button type="button" class="tab-bar-item" data-tab="speed-test" role="tab" id="tab-speed-test" aria-controls="panel-speed-test" aria-selected="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           <span>Speed Test</span>
         </button>
-        <button class="tab-bar-item" data-tab="breach-check">
+        <button type="button" class="tab-bar-item" data-tab="breach-check" role="tab" id="tab-breach-check" aria-controls="panel-breach-check" aria-selected="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           <span>Breach Check</span>
         </button>
-        <button class="tab-bar-item" data-tab="password-gen">
+        <button type="button" class="tab-bar-item" data-tab="password-gen" role="tab" id="tab-password-gen" aria-controls="panel-password-gen" aria-selected="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           <span>Passwords</span>
         </button>
-        <button class="tab-bar-item" data-tab="dns-security">
+        <button type="button" class="tab-bar-item" data-tab="dns-security" role="tab" id="tab-dns-security" aria-controls="panel-dns-security" aria-selected="false">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg>
           <span>DNS & Security</span>
         </button>
@@ -257,10 +260,10 @@
     </div>
 
     <!-- Tab Panels -->
-    <main class="tab-panels" id="tab-panels">
+    <div class="tab-panels" id="tab-panels">
 
       <!-- IP & Location -->
-      <div class="tab-panel active" id="panel-ip-location" data-panel="ip-location">
+      <div class="tab-panel active" id="panel-ip-location" data-panel="ip-location" role="tabpanel" aria-labelledby="tab-ip-location">
         <section class="card card--wide">
           <div class="card-header">
             <div class="card-icon card-icon--blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
@@ -295,7 +298,7 @@
       </div>
 
       <!-- Speed Test -->
-      <div class="tab-panel" id="panel-speed-test" data-panel="speed-test">
+      <div class="tab-panel" id="panel-speed-test" data-panel="speed-test" role="tabpanel" aria-labelledby="tab-speed-test">
         <section class="card card--wide">
           <div class="card-header">
             <div class="card-icon card-icon--purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
@@ -329,31 +332,31 @@
       </div>
 
       <!-- Breach Check -->
-      <div class="tab-panel" id="panel-breach-check" data-panel="breach-check">
+      <div class="tab-panel" id="panel-breach-check" data-panel="breach-check" role="tabpanel" aria-labelledby="tab-breach-check">
         <section class="card card--wide">
           <div class="card-header">
             <div class="card-icon card-icon--red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
             <div><h2 class="card-title">Breach Check</h2><p class="card-subtitle">See if your email or password appeared in known data breaches</p></div>
           </div>
-          <div class="breach-tabs">
-            <button class="breach-tab active" data-tab="email">Check Email</button>
-            <button class="breach-tab" data-tab="password">Check Password</button>
+          <div class="breach-tabs" role="tablist" aria-label="Breach check type">
+            <button type="button" class="breach-tab active" data-tab="email" role="tab" aria-selected="true">Check Email</button>
+            <button type="button" class="breach-tab" data-tab="password" role="tab" aria-selected="false">Check Password</button>
           </div>
           <div class="breach-content" id="breach-email" data-tab-content="email">
-            <div class="input-row"><input type="email" id="email-input" class="input-field" placeholder="Enter your email address..." autocomplete="off"><button class="btn btn--danger" id="btn-email-check">Check Breaches</button></div>
+            <div class="input-row"><input type="email" id="email-input" class="input-field" aria-label="Email address to check" placeholder="Enter your email address..." autocomplete="off"><button class="btn btn--danger" id="btn-email-check">Check Breaches</button></div>
             <div class="security-notice security-notice--blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>Your email is checked against the XposedOrNot breach database. The email address is sent to the API for lookup -- no passwords are transmitted.</div>
-            <div class="breach-result" id="email-result"></div>
+            <div class="breach-result" id="email-result" aria-live="polite"></div>
           </div>
           <div class="breach-content hidden" id="breach-password" data-tab-content="password">
-            <div class="input-row"><div class="input-wrapper"><input type="password" id="password-input" class="input-field" placeholder="Enter a password to check..." autocomplete="off"><button class="input-toggle" id="toggle-password" title="Show password"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div><button class="btn btn--danger" id="btn-password-check">Check</button></div>
+            <div class="input-row"><div class="input-wrapper"><input type="password" id="password-input" class="input-field" aria-label="Password to check" placeholder="Enter a password to check..." autocomplete="off"><button type="button" class="input-toggle" id="toggle-password" title="Show password" aria-label="Show password" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div><button class="btn btn--danger" id="btn-password-check">Check</button></div>
             <div class="security-notice security-notice--green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Your password never leaves your browser. Only the first 5 characters of its SHA-1 hash are sent to the Have I Been Pwned API, using a technique called k-anonymity to protect your privacy.</div>
-            <div class="breach-result" id="password-result"></div>
+            <div class="breach-result" id="password-result" aria-live="polite"></div>
           </div>
         </section>
       </div>
 
       <!-- Password Generator -->
-      <div class="tab-panel" id="panel-password-gen" data-panel="password-gen">
+      <div class="tab-panel" id="panel-password-gen" data-panel="password-gen" role="tabpanel" aria-labelledby="tab-password-gen">
         <section class="card card--wide">
           <div class="card-header">
             <div class="card-icon card-icon--green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
@@ -379,7 +382,7 @@
           </div>
           <div class="pwgen-output">
             <code class="pwgen-password" id="pwgen-password">Your password will appear here</code>
-            <button class="pwgen-copy" id="pwgen-copy" title="Copy password">
+            <button type="button" class="pwgen-copy" id="pwgen-copy" title="Copy password" aria-label="Copy password">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             </button>
           </div>
@@ -387,7 +390,7 @@
           <div class="pwgen-strength-label" id="pwgen-strength-label">--</div>
           <div class="pwgen-controls" id="pwgen-controls">
             <div class="pwgen-slider-group">
-              <label class="pwgen-label">Length: <strong id="pwgen-length-val">20</strong></label>
+              <label class="pwgen-label" for="pwgen-length">Length: <strong id="pwgen-length-val">20</strong></label>
               <input type="range" id="pwgen-length" class="pwgen-slider" min="8" max="64" value="20">
             </div>
             <div class="pwgen-options">
@@ -405,23 +408,24 @@
       </div>
 
       <!-- DNS & Security -->
-      <div class="tab-panel" id="panel-dns-security" data-panel="dns-security">
+      <div class="tab-panel" id="panel-dns-security" data-panel="dns-security" role="tabpanel" aria-labelledby="tab-dns-security">
         <section class="card card--wide">
           <div class="card-header">
             <div class="card-icon card-icon--cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
-            <div><h2 class="card-title">DNS &amp; Security Scan</h2><p class="card-subtitle">Scan DNS records, email authentication, and security headers</p></div>
+            <div><h2 class="card-title">DNS &amp; Security Scan</h2><p class="card-subtitle">Check DNS records and how well a domain is protected against email spoofing</p></div>
           </div>
           <div class="input-row">
-            <input type="text" id="scan-input" class="input-field" placeholder="Enter a domain or email address...">
+            <input type="text" id="scan-input" class="input-field" aria-label="Domain, URL or email address to scan" autocapitalize="off" spellcheck="false" inputmode="url" placeholder="Enter a domain or email address...">
             <button class="btn btn--primary" id="btn-scan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Scan</button>
           </div>
-          <p class="input-hint">Enter a domain like <strong>google.com</strong> or an email like <strong>you@gmail.com</strong> to scan DNS records, SPF, DMARC, DKIM, and DNSSEC</p>
-          <div id="scan-results"></div>
+          <p class="input-hint">Enter a domain like <strong>google.com</strong> or an email like <strong>you@gmail.com</strong> to check its DNS records, SPF, DMARC, DKIM, DNSSEC, MTA-STS, TLS reporting and BIMI</p>
+          <div id="scan-results" aria-live="polite"></div>
         </section>
       </div>
 
-    </main>
+    </div>
   </div>
+  </main>
 
   <!-- Export Panel -->
   <div class="export-panel" id="export-panel">
@@ -555,7 +559,7 @@
     </div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <footer class="footer">
     <p class="footer-copy">&copy; 2026 Patrick King &middot; Licensed under <a href="https://github.com/patrickking67/netscope/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a></p>

@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "netscope-site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "4102", "--directory", "."],
+      "port": 4102
+    }
+  ]
+}

@@ -10,10 +10,11 @@
 </p>
 
 <p align="center">
-  <a href="https://patrickking67.github.io/netscope/"><img src="https://img.shields.io/badge/Live%20Demo-Visit%20Site-3b82f6?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Live Demo"></a>
   <a href="https://github.com/patrickking67/netscope/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/patrickking67/netscope/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=Tests" alt="Tests"></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/patrickking67/netscope?style=for-the-badge&logo=opensourceinitiative&logoColor=white&color=10b981" alt="License"></a>
 </p>
+
+<p align="center"><strong>Live:</strong> <a href="https://patrickking67.github.io/netscope/">patrickking67.github.io/netscope</a></p>
 
 <p align="center">
   <a href="https://patrickking67.github.io/netscope/">
@@ -40,9 +41,9 @@ The app (`pages/app.html`) has five tools plus a one-click Full Scan.
 | **Breach Check: email** | Whether an address appears in known breaches, with the breach names | XposedOrNot |
 | **Breach Check: password** | How many times a password appears in breach corpora, using k-anonymity | Have I Been Pwned Pwned Passwords |
 | **Password Generator** | Random passwords, PINs, hex keys and 5-word passphrases, with strength computed from the generator's real entropy | None (Web Crypto) |
-| **DNS & Security** | A, AAAA, MX and NS records; SPF (missing, duplicate, `+all`, `?all`); DMARC policy; DKIM at common selectors; DNSSEC validation; WebRTC local address and VPN leak check; whether the page is on HTTPS | Google DNS-over-HTTPS; Google STUN |
+| **DNS & Security** | A, AAAA, MX and NS records (null MX recognized); SPF (missing, duplicate, `+all`, `?all`); DMARC policy and partial `pct=`; DKIM at 18 common selectors; DNSSEC validation; MTA-STS; SMTP TLS reporting; BIMI; WebRTC local address and VPN leak check; whether the page is on HTTPS. One overall verdict, and a plain-language explanation under each check | Google DNS-over-HTTPS; Google STUN |
 
-**Full Scan** runs IP, speed, email breach (if an address is entered or you are signed in) and DNS (if a domain is entered) in sequence. Results can be copied, emailed, or downloaded as a PDF (jsPDF). Optional sign-in (Google, GitHub or email via Firebase) adds cloud save of results and theme sync. Every tool works without an account.
+**Full Scan** runs IP, speed, email breach (if an address is entered or you are signed in) and DNS (if a domain is entered) in sequence. Results, including the scan verdict and the email breach result, can be copied, emailed, or downloaded as a PDF (jsPDF). Password checks are never exported. Optional sign-in (Google, GitHub or email via Firebase) adds cloud save of results and theme sync. Every tool works without an account.
 
 ## Privacy model
 
@@ -60,7 +61,8 @@ What each check sends, and to whom:
 
 Other guarantees, each backed by code and tests:
 
-- **Failed lookups are never reported as safe.** A rate-limited or failed breach lookup shows an error, not "no breaches found".
+- **Failed lookups are never reported as safe.** A rate-limited or failed breach lookup shows an error, not "no breaches found". A DNS lookup that fails says "could not look up", and a domain that does not exist says so instead of being graded.
+- **Nothing hangs forever.** IP, breach and DNS requests time out after 10 seconds and show an error.
 - **No telemetry.** No analytics, tracking pixels or third-party cookies.
 - **Strict Content-Security-Policy.** Every page forbids inline scripts, `eval`, plugins and `<base>` changes, and the app page lists the exact API hosts it may contact. Leaflet and jsPDF are pinned with Subresource Integrity hashes.
 - **The service worker never caches API responses.** It only stores same-origin files inside its own scope, so breach, IP and DNS results are never written to disk by the PWA.
@@ -70,14 +72,16 @@ See [SECURITY.md](SECURITY.md) to report a vulnerability.
 
 ## Run it locally
 
-No install step. Any static file server works; this is the one the project uses:
+No install step. You need Python 3, and Node.js 22 or newer for the checks.
 
 ```bash
 git clone https://github.com/patrickking67/netscope.git
 cd netscope
-python3 -m http.server 8000
-# open http://localhost:8000
+npm run serve        # python3 -m http.server 4102 --directory .
+# open http://localhost:4102
 ```
+
+The same server is defined in `.claude/launch.json` for the Claude desktop preview.
 
 Serve over HTTP rather than opening `index.html` from disk. Service workers and some browser APIs do not work on `file://` URLs.
 
@@ -97,22 +101,24 @@ Once installed, the interface opens offline. The checks themselves need a networ
 Unit tests use Node's built-in test runner. No dependencies to install; Node 22 or newer.
 
 ```bash
-npm test                              # 74 tests
-python3 scripts/check-static-site.py  # asset links, JS syntax, PWA files
+npm run check         # everything below, in one command
+npm test              # 96 unit tests
+npm run check:static  # asset links, JS syntax, PWA files, required docs, llms.txt, launch.json, no em dashes or emoji
 ```
 
 What is covered:
 
 - **k-anonymity:** with a recording `fetch`, asserts only the 5-character prefix is sent and the password, full hash and suffix never appear in the request; HTTP errors throw instead of returning zero.
 - **Breach parsing:** both XposedOrNot response shapes, 404 as clean, 429 and 5xx as errors, the network fallback.
-- **DNS grading:** domain input normalization, quoted TXT joining, SPF and DMARC edge cases (including `sp=` not being mistaken for `p=`), revoked DKIM keys.
+- **DNS grading:** domain input normalization, quoted TXT joining, SPF and DMARC edge cases (including `sp=` not being mistaken for `p=` and partial `pct=`), revoked DKIM keys, MTA-STS, TLS-RPT, BIMI, null MX, and `scanDomain` against a fake resolver for NXDOMAIN, total failure and single failed lookups.
+- **Timeouts:** `fetchWithTimeout` aborts a request that never answers and leaves ordinary errors alone.
 - **WebRTC:** candidate parsing, private ranges, and not flagging the normal STUN public address as a leak.
 - **Generator:** rejection sampling (no modulo bias), entropy from pool size or word list size.
 - **Speed math:** latency trimming and time-ordered jitter, throughput after warm-up.
 - **Service worker:** loaded in a `vm` sandbox to check scope limits, error responses not cached, offline fallback, stale-while-revalidate, and that every page script is in the app shell.
-- **Pages:** CSP present and strict on every page, no inline scripts or handlers, SRI on CDN scripts, every API host the code calls is in `connect-src`.
+- **Pages:** CSP present and strict on every page, no inline scripts or handlers, SRI on CDN scripts, every API host the code calls is in `connect-src`, skip link and `<main>` on every page, ARIA tabs, live result regions, named icon buttons, and no untimed third-party `fetch`.
 
-CI runs both commands on every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+CI runs `npm run check` on every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ## Project layout
 
@@ -133,7 +139,11 @@ manifest.webmanifest        PWA manifest
 tests/                      node:test suites
 scripts/check-static-site.py  Static validation used in CI and deploy
 docs/                       Architecture notes and Firebase setup
+llms.txt                    Summary for language models, served at /netscope/llms.txt
+.claude/launch.json         Local preview config (port 4102)
 ```
+
+See [AGENTS.md](AGENTS.md) for the agent guide and [CONTRIBUTING.md](CONTRIBUTING.md) for branch and commit conventions. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
 
 `core.js` is a classic script that also exports through `module.exports`, so the browser loads it with a normal `<script>` tag and Node tests `require()` it without a build step.
 

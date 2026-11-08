@@ -4,7 +4,7 @@ NetScope is a zero-build static web application deployed directly from the repos
 
 - `index.html` introduces the product and routes visitors into the toolkit.
 - `pages/app.html` provides the interactive network tools.
-- `assets/js/core.js` holds the pure logic (k-anonymity hashing, breach response parsing, DNS and email-security grading, WebRTC candidate analysis, generator entropy, speed math). It has no DOM access and takes `fetch` as an argument, so `tests/core.test.js` runs it in Node.
+- `assets/js/core.js` holds the pure logic (k-anonymity hashing, breach response parsing, DNS and email-security grading, WebRTC candidate analysis, generator entropy, speed math, request timeouts). It has no DOM access and takes `fetch` as an argument, so `tests/core.test.js` runs it in Node. `scanDomain(domain, doh)` runs every DNS lookup for a scan in parallel and returns records, graded checks and a status (`ok`, `nxdomain` or `error`); `app.js` passes it a DoH function and only renders the result.
 - `assets/js/app.js` wires the DOM, makes the network calls and renders results through `core.js`.
 - `assets/js/auth.js` and `assets/js/firestore.js` provide optional account persistence.
 - `assets/css/style.css` owns the responsive visual system.

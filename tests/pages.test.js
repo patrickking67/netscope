@@ -43,6 +43,13 @@ for (const page of pages) {
     assert.ok(!/href\s*=\s*["']javascript:/i.test(html), 'javascript: URL found');
   });
 
+  test(`${page} has a skip link to its main landmark and a theme color`, () => {
+    const html = read(page);
+    assert.match(html, /<a class="skip-link" href="#main">/);
+    assert.equal([...html.matchAll(/<main\b[^>]*\bid="main"/g)].length, 1, 'exactly one <main id="main">');
+    assert.match(html, /<meta name="theme-color" content="#[0-9a-f]{6}">/);
+  });
+
   test(`${page} links that open new tabs use rel=noopener`, () => {
     const html = read(page);
     for (const [tag] of html.matchAll(/<a\b[^>]*target="_blank"[^>]*>/g)) {
@@ -91,4 +98,40 @@ test('password input is never stored, exported or sent anywhere but the k-anonym
   assert.equal(usages, 3);
   assert.ok(!/localStorage\.setItem\([^)]*password/i.test(app));
   assert.match(app, /state\.breach\.password = \{ count \}/);
+});
+
+test('app tool tabs follow the ARIA tabs pattern', () => {
+  const html = read('pages/app.html');
+  const tabs = [...html.matchAll(/<button[^>]+class="tab-bar-item[^"]*"[^>]*>/g)].map((m) => m[0]);
+  assert.equal(tabs.length, 5);
+  for (const tab of tabs) {
+    const id = tab.match(/data-tab="([a-z-]+)"/)[1];
+    assert.match(tab, /role="tab"/);
+    assert.match(tab, new RegExp(`aria-controls="panel-${id}"`));
+    assert.match(html, new RegExp(`id="panel-${id}"[^>]*role="tabpanel"[^>]*aria-labelledby="tab-${id}"`));
+  }
+  assert.equal(tabs.filter((t) => /aria-selected="true"/.test(t)).length, 1);
+});
+
+test('app result regions announce updates and icon-only controls have names', () => {
+  const html = read('pages/app.html');
+  for (const id of ['email-result', 'password-result', 'scan-results', 'toast']) {
+    assert.match(html, new RegExp(`id="${id}"[^>]*aria-live="polite"`), id);
+  }
+  for (const id of ['toggle-password', 'pwgen-copy', 'export-trigger', 'btn-full-scan']) {
+    assert.match(html, new RegExp(`id="${id}"[^>]*aria-label="[^"]+"`), id);
+  }
+  for (const id of ['email-input', 'password-input', 'scan-input']) {
+    assert.match(html, new RegExp(`id="${id}"[^>]*aria-label="[^"]+"`), id);
+  }
+});
+
+test('every third-party call in app.js goes through the timeout helper', () => {
+  const app = read('assets/js/app.js');
+  // Speed test transfers are timed by the test itself and keep plain fetch.
+  for (const [line] of app.matchAll(/^.*\bfetch\(.*$/gm)) {
+    assert.match(line, /speed\.cloudflare\.com|generate_204|\$\{url\}/, `untimed fetch: ${line.trim()}`);
+  }
+  assert.match(app, /Core\.checkEmailExposure\(email, \{ fetchImpl: timedFetch \}\)/);
+  assert.match(app, /Core\.checkPwnedPassword\(password, \{ fetchImpl: timedFetch \}\)/);
 });

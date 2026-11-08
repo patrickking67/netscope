@@ -1,0 +1,57 @@
+# Changelog
+
+All notable changes to NetScope are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/). There are no tagged releases yet; `package.json` is at 1.0.0.
+
+## [Unreleased]
+
+### Added
+- DNS & Security scan checks MTA-STS, SMTP TLS reporting (TLS-RPT) and BIMI, probes 18 common DKIM selectors in parallel and lists every one it finds.
+- One overall verdict for a scan (looks good, needs attention, at risk) with counts, and a plain-language explanation under each check.
+- The text, email and PDF export includes the scan verdict and the email breach result. Password checks are still never exported.
+- Skip links, a `<main>` landmark on every page, ARIA tabs with arrow-key navigation, live result regions and names for icon-only controls.
+- `npm run check` runs the static site check (including a text lint) and the unit tests in one command.
+- `.claude/launch.json` for the local preview on port 4102, `llms.txt`, CONTRIBUTING.md, this changelog, editor and git attribute files, CODEOWNERS, Dependabot, and issue and pull request templates.
+
+### Changed
+- IP, breach and DNS requests time out after 10 seconds instead of hanging, and IP echo responses must be a valid address.
+- DMARC with `pct` under 100 is a warning, not a pass. A null MX record is reported as "does not accept email".
+- Loading, empty, warning and error states look and read the same across tools. Result icons are SVG instead of emoji.
+- Muted text, status colors and primary buttons meet WCAG AA contrast in both themes. Focus rings are visible and reduced-motion preferences are respected.
+- Labels are sentence case, the landing badge says what the app does, and per-section scroll animations are gone.
+- On phones the Full Scan button collapses to an icon so the header no longer clips.
+- Service worker cache bumped to `netscope-shell-v3`.
+
+### Fixed
+- Scanning a domain that does not exist now says so instead of grading missing SPF and DMARC as failures.
+- A failed DNS lookup is reported as "could not look up" instead of "no record found".
+- Password generator options were unreachable by keyboard.
+
+## 2026-11-07
+
+### Fixed
+- Breach, DNS and WebRTC results: failed or rate-limited lookups are errors, never "no breaches found"; SPF and DMARC edge cases; the normal STUN public address is no longer flagged as a leak.
+
+### Added
+- Content-Security-Policy on every page and SRI on CDN scripts.
+- CI that runs the static check and unit tests on every push and pull request.
+
+### Changed
+- README rewritten with the actual tools and a per-check privacy model.
+
+## 2026-07-13
+
+### Added
+- Installable PWA with an offline app shell.
+
+### Changed
+- Hardened the GitHub Pages release workflow and updated the official deployment actions.
+
+## 2026-05-13
+
+### Changed
+- Lowercase canonical URLs and repository name; agent guide added.
+
+## 2026-02-11 to 2026-02-12
+
+### Added
+- First public version: IP and geolocation, multi-connection speed test with progress, email and password breach checks, password generator with presets, DNS and email security scan, Full Scan, PDF export, light and dark themes, optional Firebase sign-in and cloud save, and a multi-page layout with landing and about pages.

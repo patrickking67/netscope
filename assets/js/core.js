@@ -254,8 +254,13 @@
       return { icon: 'fail', name, detail: 'Multiple DMARC records found. Receivers ignore DMARC in this case (RFC 7489)', value: records.join(' | ') };
     }
     const record = records[0].trim();
-    const policy = (parseDmarcTags(record).p || '').toLowerCase();
+    const tags = parseDmarcTags(record);
+    const policy = (tags.p || '').toLowerCase();
     if (policy === 'reject' || policy === 'quarantine') {
+      const pct = tags.pct === undefined ? 100 : Number(tags.pct);
+      if (Number.isFinite(pct) && pct >= 0 && pct < 100) {
+        return { icon: 'warn', name, detail: `Policy: ${policy}, but only applied to ${pct}% of failing mail`, value: record };
+      }
       return { icon: 'pass', name, detail: `Policy: ${policy}`, value: record };
     }
     if (policy === 'none') {
@@ -276,6 +281,195 @@
       name: 'DNSSEC',
       detail: validated ? 'DNSSEC signatures are validated for this domain' : 'DNSSEC is not enabled or not validated',
     };
+  }
+
+  /**
+   * MTA-STS (RFC 8461) tells sending servers to require TLS when delivering to
+   * this domain. The TXT record at _mta-sts.<domain> announces the policy.
+   */
+  function evaluateMtaSts(values) {
+    const records = (values || []).filter((v) => /^v=STSv1\s*(;|$)/i.test(String(v).trim()));
+    const name = 'MTA-STS';
+    if (records.length === 0) {
+      return { icon: 'info', name, detail: 'No MTA-STS policy. Optional: it makes other mail servers require TLS when sending to this domain' };
+    }
+    if (records.length > 1) {
+      return { icon: 'warn', name, detail: 'Multiple MTA-STS records found. Senders ignore the policy in this case (RFC 8461)', value: records.join(' | ') };
+    }
+    const id = parseDmarcTags(records[0]).id || '';
+    if (!/^[A-Za-z0-9]{1,32}$/.test(id)) {
+      return { icon: 'warn', name, detail: 'MTA-STS record is missing a valid id= tag', value: records[0].trim() };
+    }
+    return { icon: 'pass', name, detail: 'MTA-STS is announced. Senders should fetch the policy over HTTPS', value: records[0].trim() };
+  }
+
+  /** SMTP TLS reporting (RFC 8460) at _smtp._tls.<domain>. */
+  function evaluateTlsRpt(values) {
+    const records = (values || []).filter((v) => /^v=TLSRPTv1\s*(;|$)/i.test(String(v).trim()));
+    const name = 'TLS Reporting';
+    if (records.length === 0) {
+      return { icon: 'info', name, detail: 'No TLS-RPT record. Optional: it asks senders to report TLS delivery failures' };
+    }
+    const rua = parseDmarcTags(records[0]).rua || '';
+    if (!/^(mailto:|https:)/i.test(rua)) {
+      return { icon: 'warn', name, detail: 'TLS-RPT record has no valid rua= reporting address', value: records[0].trim() };
+    }
+    return { icon: 'pass', name, detail: 'TLS failure reports are requested', value: records[0].trim() };
+  }
+
+  /** BIMI (brand logo in supporting inboxes) at default._bimi.<domain>. Needs enforced DMARC to take effect. */
+  function evaluateBimi(values, dmarcCheck) {
+    const records = (values || []).filter((v) => /^v=BIMI1\s*(;|$)/i.test(String(v).trim()));
+    const name = 'BIMI';
+    if (records.length === 0) {
+      return { icon: 'info', name, detail: 'No BIMI record. Optional: it lets supporting inboxes show your logo' };
+    }
+    const tags = parseDmarcTags(records[0]);
+    const logo = tags.l || '';
+    if (logo && !/^https:\/\//i.test(logo)) {
+      return { icon: 'warn', name, detail: 'BIMI logo (l=) must be an HTTPS URL', value: records[0].trim() };
+    }
+    if (dmarcCheck && dmarcCheck.icon !== 'pass') {
+      return { icon: 'warn', name, detail: 'BIMI is published but inboxes ignore it until DMARC is enforced (quarantine or reject at 100%)', value: records[0].trim() };
+    }
+    const vmc = tags.a ? ' with a certificate (a=)' : ' without a certificate, which some inboxes require';
+    return { icon: 'pass', name, detail: `BIMI is published${vmc}`, value: records[0].trim() };
+  }
+
+  /** Common DKIM selectors. Selectors are not discoverable, so a miss is not a failure. */
+  const DKIM_SELECTORS = ['default', 'google', 'selector1', 'selector2', 'k1', 'k2', 's1', 's2', 'dkim', 'mail', 'smtp', 'fm1', 'fm2', 'fm3', 'mx', 'protonmail', 'zoho', 'mandrill'];
+
+  function evaluateDkim(foundSelectors, probedCount = DKIM_SELECTORS.length) {
+    const found = (foundSelectors || []).filter(Boolean);
+    if (found.length > 0) {
+      return { icon: 'pass', name: 'DKIM', detail: `DKIM key${found.length > 1 ? 's' : ''} found at selector${found.length > 1 ? 's' : ''}: ${found.join(', ')}` };
+    }
+    return { icon: 'info', name: 'DKIM', detail: `No DKIM key at ${probedCount} common selectors. The domain may still sign mail with a custom selector` };
+  }
+
+  /** DNS response codes worth naming to a person. */
+  const DNS_RCODES = { 0: 'NOERROR', 1: 'FORMERR', 2: 'SERVFAIL', 3: 'NXDOMAIN', 5: 'REFUSED' };
+
+  /** Plain-language meaning of each status, shown under each check. */
+  const CHECK_EXPLANATIONS = {
+    'SPF Record': 'SPF lists the servers allowed to send mail as this domain.',
+    'DMARC Policy': 'DMARC tells receivers what to do with mail that fails SPF and DKIM: nothing, spam folder, or reject.',
+    DKIM: 'DKIM adds a signature to outgoing mail so receivers can tell it was not altered or forged.',
+    DNSSEC: 'DNSSEC signs DNS answers so they cannot be quietly swapped in transit.',
+    'MTA-STS': 'MTA-STS stops attackers from downgrading incoming mail to unencrypted delivery.',
+    'TLS Reporting': 'TLS-RPT sends you reports when other servers fail to deliver mail to you securely.',
+    BIMI: 'BIMI shows a verified brand logo next to your mail in some inboxes.',
+    'Mail Servers': 'MX records say which servers accept mail for this domain.',
+  };
+
+  /** Count results by severity and give one overall verdict. */
+  function summarizeChecks(checks) {
+    const counts = { pass: 0, warn: 0, fail: 0, info: 0 };
+    for (const c of checks || []) if (c && c.icon in counts) counts[c.icon]++;
+    let verdict = 'good';
+    if (counts.fail > 0) verdict = 'at-risk';
+    else if (counts.warn > 0) verdict = 'needs-attention';
+    const labels = { good: 'Looks good', 'needs-attention': 'Needs attention', 'at-risk': 'At risk' };
+    return { ...counts, verdict, label: labels[verdict] };
+  }
+
+  /**
+   * Run the domain checks. doh(name, type, extra) must resolve to DoH JSON or throw.
+   * Returns { status: 'ok' | 'nxdomain' | 'error', records, checks, failedLookups }.
+   * Every check that could not be looked up says so instead of being graded as missing.
+   */
+  async function scanDomain(domain, doh) {
+    const settle = (promise) => promise.then((value) => ({ ok: true, value }), (error) => ({ ok: false, error }));
+    const q = (name, type, extra) => settle(Promise.resolve().then(() => doh(name, type, extra)));
+
+    const [a, aaaa, mx, ns, txt, dmarc, mtaSts, tlsRpt, bimi, dnssec, ...dkim] = await Promise.all([
+      q(domain, 'A'), q(domain, 'AAAA'), q(domain, 'MX'), q(domain, 'NS'),
+      q(domain, 'TXT'), q(`_dmarc.${domain}`, 'TXT'), q(`_mta-sts.${domain}`, 'TXT'),
+      q(`_smtp._tls.${domain}`, 'TXT'), q(`default._bimi.${domain}`, 'TXT'), q(domain, 'A', '&do=1'),
+      ...DKIM_SELECTORS.map((sel) => q(`${sel}._domainkey.${domain}`, 'TXT')),
+    ]);
+
+    const recordLookups = [a, aaaa, mx, ns];
+    const okLookups = recordLookups.filter((r) => r.ok);
+    if (okLookups.length === 0) {
+      return { status: 'error', records: [], checks: [], failedLookups: recordLookups.length };
+    }
+    const nx = okLookups.some((r) => Number(r.value && r.value.Status) === 3);
+    if (nx) return { status: 'nxdomain', records: [], checks: [], failedLookups: 0 };
+
+    const records = [];
+    for (const r of okLookups) {
+      for (const rec of (r.value && r.value.Answer) || []) {
+        if ([1, 2, 15, 28].includes(Number(rec.type))) records.push({ type: dnsTypeName(rec.type), data: String(rec.data), ttl: rec.TTL });
+      }
+    }
+
+    const graded = (lookup, evaluate, name, label) => {
+      if (!lookup.ok) return { icon: 'warn', name, detail: `Could not look up ${label}. Try again` };
+      const status = Number(lookup.value && lookup.value.Status);
+      if (status && status !== 3) return { icon: 'warn', name, detail: `${label} lookup returned ${DNS_RCODES[status] || 'error ' + status}` };
+      return evaluate(txtValues(lookup.value));
+    };
+
+    const checks = [];
+    checks.push(graded(txt, evaluateSpf, 'SPF Record', 'SPF'));
+    const dmarcCheck = graded(dmarc, evaluateDmarc, 'DMARC Policy', 'DMARC');
+    checks.push(dmarcCheck);
+    const found = DKIM_SELECTORS.filter((sel, i) => dkim[i].ok && hasDkimKey(txtValues(dkim[i].value)));
+    checks.push(evaluateDkim(found));
+    checks.push(dnssec.ok ? evaluateDnssec(dnssec.value) : { icon: 'warn', name: 'DNSSEC', detail: 'Could not verify DNSSEC' });
+    if (mx.ok) {
+      const answers = ((mx.value && mx.value.Answer) || []).filter((r) => Number(r.type) === 15);
+      const nullMx = answers.length === 1 && /^\s*0\s+\.?\s*$/.test(String(answers[0].data));
+      if (nullMx) checks.push({ icon: 'info', name: 'Mail Servers', detail: 'Null MX (RFC 7505): this domain states it does not accept email' });
+      else checks.push(answers.length > 0
+        ? { icon: 'info', name: 'Mail Servers', detail: `${answers.length} MX record(s) found`, value: answers.map((r) => r.data).join(', ') }
+        : { icon: 'warn', name: 'Mail Servers', detail: 'No MX records found. The domain may not receive email' });
+    }
+    checks.push(graded(mtaSts, evaluateMtaSts, 'MTA-STS', 'MTA-STS'));
+    checks.push(graded(tlsRpt, evaluateTlsRpt, 'TLS Reporting', 'TLS-RPT'));
+    checks.push(graded(bimi, (v) => evaluateBimi(v, dmarcCheck), 'BIMI', 'BIMI'));
+
+    for (const c of checks) if (!c.explain && CHECK_EXPLANATIONS[c.name]) c.explain = CHECK_EXPLANATIONS[c.name];
+    return { status: 'ok', records, checks, failedLookups: recordLookups.length - okLookups.length };
+  }
+
+  // ============================================================
+  // NETWORK HELPERS
+  // ============================================================
+  /**
+   * fetch with a deadline. Aborts the request (including the body read) after
+   * timeoutMs so one slow provider cannot stall a fallback chain forever.
+   */
+  async function fetchWithTimeout(url, init = {}, options = {}) {
+    const fetchImpl = options.fetchImpl || globalThis.fetch;
+    const timeoutMs = options.timeoutMs || 8000;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      return await fetchImpl(url, { ...init, signal: controller.signal });
+    } catch (err) {
+      if (controller.signal.aborted) {
+        const timeout = new Error(`Request timed out after ${timeoutMs} ms`);
+        timeout.name = 'TimeoutError';
+        throw timeout;
+      }
+      throw err;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** True for a syntactically valid IPv4 or IPv6 address string from an IP echo service. */
+  function isIpAddress(value) {
+    const text = String(value || '').trim();
+    if (isIPv4(text)) return true;
+    if (!isIPv6(text) || text.length > 45) return false;
+    const groups = text.split('::');
+    if (groups.length > 2) return false;
+    const parts = text.split(':');
+    if (parts.length > 8 || (groups.length === 1 && parts.length !== 8 && !isIPv4(parts[parts.length - 1]))) return false;
+    return text.split(':').every((g) => g === '' || /^[0-9a-f]{1,4}$/i.test(g) || isIPv4(g));
   }
 
   // ============================================================
@@ -531,8 +725,19 @@
         `Upload: ${fixed(s.upload, 1)} Mbps`,
         '');
     }
+    // Only the email result is exported. Password checks stay out of the report entirely.
+    const e = state && state.breach && state.breach.email;
+    if (e) {
+      lines.push('--- Breach Check ---');
+      if (e.status === 'found') lines.push(`Email ${e.email}: found in ${e.count} breach${e.count === 1 ? '' : 'es'}`);
+      else if (e.status === 'clean') lines.push(`Email ${e.email}: not found in known breaches`);
+      else lines.push(`Email ${e.email}: check did not complete`);
+      lines.push('');
+    }
     if (state && state.scan) {
       lines.push(`--- DNS & Security: ${state.scan.domain} ---`);
+      const sum = summarizeChecks(state.scan.checks);
+      lines.push(`Overall: ${sum.label} (${sum.pass} pass, ${sum.warn} warn, ${sum.fail} fail, ${sum.info} info)`);
       for (const c of state.scan.checks) lines.push(`${STATUS_TAGS[c.icon] || '[?]'} ${c.name}: ${c.detail}`);
       lines.push('');
     }
@@ -546,6 +751,8 @@
     isPlausibleEmail, normalizeXposedBreaches, checkEmailExposure,
     normalizeDomainInput, dnsTypeName, joinTxtData, txtValues,
     evaluateSpf, parseDmarcTags, evaluateDmarc, hasDkimKey, evaluateDnssec,
+    evaluateMtaSts, evaluateTlsRpt, evaluateBimi, evaluateDkim, DKIM_SELECTORS,
+    summarizeChecks, scanDomain, fetchWithTimeout, isIpAddress,
     isIPv4, isIPv6, isPrivateIPv4, parseIceCandidate, classifyIceCandidates, evaluateWebRtc,
     CHARSETS, secureRandomInt, generateFromPool, generatePassphrase, strengthFromEntropy,
     summarizeLatency, throughputMbps, gaugeDashOffset, GAUGE_CIRCUMFERENCE,

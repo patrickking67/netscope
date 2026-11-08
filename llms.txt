@@ -1,0 +1,29 @@
+# NetScope
+
+> NetScope is an installable, client-side network security toolkit that runs entirely in the browser as a static site with no backend. It checks your public IP and approximate location, measures connection speed, looks up email breaches and checks passwords against Have I Been Pwned using k-anonymity (only a 5-character SHA-1 prefix leaves the page), generates passwords and passphrases with Web Crypto, and grades a domain's DNS and email security (SPF, DMARC, DKIM, DNSSEC, MTA-STS, TLS reporting, BIMI) over DNS-over-HTTPS. It is plain HTML, CSS and JavaScript with a strict Content-Security-Policy, MIT licensed.
+
+## Live demo
+
+- [Landing page](https://patrickking67.github.io/netscope/): what NetScope does and how it handles your data
+- [Toolkit](https://patrickking67.github.io/netscope/pages/app.html): the five tools and Full Scan; works as a guest
+- [About](https://patrickking67.github.io/netscope/pages/about.html): privacy summary and the services each tool calls
+
+## Docs
+
+- [README](https://github.com/patrickking67/netscope/blob/main/README.md): tools, privacy model, local run, tests and deployment
+- [AGENTS.md](https://github.com/patrickking67/netscope/blob/main/AGENTS.md): layout, commands and rules for coding agents
+- [Architecture](https://github.com/patrickking67/netscope/blob/main/docs/architecture.md): how the pages, core logic and service worker fit together
+- [Security policy](https://github.com/patrickking67/netscope/blob/main/SECURITY.md): security model and private vulnerability reporting
+- [Changelog](https://github.com/patrickking67/netscope/blob/main/CHANGELOG.md): release history
+
+## Source
+
+- [Repository](https://github.com/patrickking67/netscope): full source on GitHub
+- [core.js](https://github.com/patrickking67/netscope/blob/main/assets/js/core.js): pure, unit-tested logic for hashing, breach parsing, DNS grading, entropy and speed math
+- [app.js](https://github.com/patrickking67/netscope/blob/main/assets/js/app.js): DOM wiring, network calls and rendering
+- [Tests](https://github.com/patrickking67/netscope/tree/main/tests): node:test suites for core logic, pages and the service worker
+
+## Optional
+
+- [Firebase setup](https://github.com/patrickking67/netscope/blob/main/docs/FIREBASE_SETUP.md): optional sign-in and cloud save for your own deployment
+- [Contributing](https://github.com/patrickking67/netscope/blob/main/CONTRIBUTING.md): branch naming, commit style and checks
