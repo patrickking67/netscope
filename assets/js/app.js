@@ -1,5 +1,8 @@
 /* ===== NetScope - Network Security Toolkit ===== */
 
+// Pure logic lives in core.js so it can be unit tested in Node.
+const Core = window.NetScopeCore;
+
 const state = {
   ip: null, geo: null,
   speed: { ping: null, jitter: null, download: null, upload: null },
@@ -184,7 +187,7 @@ function initEventListeners() {
 }
 
 // ============================================================
-// IP & LOCATION - robust fallback chain
+// IP & LOCATION - provider fallback chain
 // ============================================================
 async function fetchIPInfo() {
   // Step 1: Get IP
@@ -212,9 +215,9 @@ async function fetchIPInfo() {
 
   // Step 2: Get geo/network info with fallback
   const geoApis = [
-    { url: `https://ipapi.co/${ip}/json/`, parse: parseIpapiCo },
-    { url: `https://ipwho.is/${ip}`, parse: parseIpwhois },
-    { url: `https://freeipapi.com/api/json/${ip}`, parse: parseFreeipapi },
+    { url: `https://ipapi.co/${encodeURIComponent(ip)}/json/`, parse: Core.parseIpapiCo },
+    { url: `https://ipwho.is/${encodeURIComponent(ip)}`, parse: Core.parseIpwhois },
+    { url: `https://freeipapi.com/api/json/${encodeURIComponent(ip)}`, parse: Core.parseFreeipapi },
   ];
   for (const api of geoApis) {
     try {
@@ -232,44 +235,6 @@ async function fetchIPInfo() {
   clearSkeletons();
 }
 
-function parseIpapiCo(d) {
-  if (d.error) return null;
-  return {
-    ip: d.ip, isp: d.org || 'N/A', org: d.org || 'N/A',
-    asn: d.asn || 'N/A', type: d.version || 'N/A',
-    proxy: false, hosting: false,
-    country: d.country_name, countryCode: d.country_code,
-    region: d.region, city: d.city, postal: d.postal,
-    lat: d.latitude, lng: d.longitude,
-    timezone: d.timezone, flag: d.country_code,
-  };
-}
-
-function parseIpwhois(d) {
-  if (!d.success) return null;
-  return {
-    ip: d.ip, isp: d.connection?.isp || 'N/A', org: d.connection?.org || 'N/A',
-    asn: d.connection?.asn ? `AS${d.connection.asn}` : 'N/A', type: d.type || 'N/A',
-    proxy: d.security?.proxy || false, hosting: d.security?.hosting || false,
-    country: d.country, countryCode: d.country_code,
-    region: d.region, city: d.city, postal: d.postal,
-    lat: d.latitude, lng: d.longitude,
-    timezone: d.timezone?.id || 'N/A', flag: d.country_code,
-  };
-}
-
-function parseFreeipapi(d) {
-  return {
-    ip: d.ipAddress, isp: d.isp || 'N/A', org: d.isp || 'N/A',
-    asn: 'N/A', type: d.ipVersion ? `IPv${d.ipVersion}` : 'N/A',
-    proxy: d.isProxy || false, hosting: false,
-    country: d.countryName, countryCode: d.countryCode,
-    region: d.regionName, city: d.cityName, postal: d.zipCode,
-    lat: d.latitude, lng: d.longitude,
-    timezone: d.timeZone, flag: d.countryCode,
-  };
-}
-
 function renderGeo(g) {
   setVal('info-isp', g.isp);
   setVal('info-org', g.org);
@@ -277,7 +242,7 @@ function renderGeo(g) {
   setVal('info-type', g.type);
   setVal('info-proxy', g.proxy ? 'Yes - Detected' : 'No');
   setVal('info-hosting', g.hosting ? 'Yes' : 'No');
-  const flag = g.countryCode ? countryFlag(g.countryCode) + ' ' : '';
+  const flag = g.countryCode ? Core.countryFlag(g.countryCode) + ' ' : '';
   setVal('geo-country', flag + (g.country || 'N/A'));
   setVal('geo-region', g.region || 'N/A');
   setVal('geo-city', g.city || 'N/A');
@@ -304,11 +269,6 @@ function initMap(lat, lng) {
   }).addTo(map);
   window._netscopeMap = map;
   setTimeout(() => map.invalidateSize(), 400);
-}
-
-function countryFlag(code) {
-  if (!code || code.length !== 2) return '';
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
 }
 
 // ============================================================
@@ -396,21 +356,7 @@ async function testLatency() {
     results.push(performance.now() - start);
   }
 
-  if (results.length === 0) return { ping: 0, jitter: 0 };
-
-  results.sort((a, b) => a - b);
-  const trim = Math.max(1, Math.floor(results.length * 0.1));
-  const trimmed = results.slice(trim, -trim);
-  const ping = trimmed[Math.floor(trimmed.length / 2)];
-
-  // Jitter = mean absolute difference between consecutive pings
-  let jitterSum = 0;
-  for (let i = 1; i < trimmed.length; i++) {
-    jitterSum += Math.abs(trimmed[i] - trimmed[i - 1]);
-  }
-  const jitter = trimmed.length > 1 ? jitterSum / (trimmed.length - 1) : 0;
-
-  return { ping, jitter };
+  return Core.summarizeLatency(results);
 }
 
 async function testCfAvailable() {
@@ -452,14 +398,9 @@ async function testMultiDownload(onProgress) {
 
         // Update gauge during measurement window
         if (fetchEnd - testStart > WARMUP_MS) {
-          const measured = transfers.filter(t => t.endTime > testStart + WARMUP_MS);
-          const measuredBytes = measured.reduce((s, t) => s + t.bytes, 0);
-          const elapsed = (fetchEnd - testStart - WARMUP_MS) / 1000;
-          if (elapsed > 0) {
-            const mbps = (measuredBytes * 8) / elapsed / 1e6;
-            setGauge(mbps);
-            animateNumber(document.getElementById('gauge-number'), mbps, 1);
-          }
+          const mbps = Core.throughputMbps(transfers, testStart + WARMUP_MS);
+          setGauge(mbps);
+          animateNumber(document.getElementById('gauge-number'), mbps, 1);
         }
       } catch { break; }
     }
@@ -469,11 +410,7 @@ async function testMultiDownload(onProgress) {
   for (let i = 0; i < CONNECTIONS; i++) workers.push(worker(i));
   await Promise.allSettled(workers);
 
-  const warmupEnd = testStart + WARMUP_MS;
-  const measured = transfers.filter(t => t.endTime > warmupEnd);
-  const measuredBytes = measured.reduce((s, t) => s + t.bytes, 0);
-  const elapsed = measured.length > 0 ? (Math.max(...measured.map(t => t.endTime)) - warmupEnd) / 1000 : 0;
-  const mbps = elapsed > 0 ? (measuredBytes * 8) / elapsed / 1e6 : 0;
+  const mbps = Core.throughputMbps(transfers, testStart + WARMUP_MS);
 
   setGauge(mbps);
   animateNumber(document.getElementById('gauge-number'), mbps, 1);
@@ -537,17 +474,13 @@ async function testMultiUpload(onProgress) {
   for (let i = 0; i < CONNECTIONS; i++) workers.push(worker(i));
   await Promise.allSettled(workers);
 
-  const warmupEnd = testStart + WARMUP_MS;
-  const measured = transfers.filter(t => t.endTime > warmupEnd);
-  const measuredBytes = measured.reduce((s, t) => s + t.bytes, 0);
-  const elapsed = measured.length > 0 ? (Math.max(...measured.map(t => t.endTime)) - warmupEnd) / 1000 : 0;
-  const mbps = elapsed > 0 ? (measuredBytes * 8) / elapsed / 1e6 : 0;
+  const mbps = Core.throughputMbps(transfers, testStart + WARMUP_MS);
 
   return mbps;
 }
 
 function resetGauge() {
-  document.getElementById('gauge-circle').style.strokeDashoffset = '364.42';
+  document.getElementById('gauge-circle').style.strokeDashoffset = String(Core.GAUGE_CIRCUMFERENCE);
   document.getElementById('gauge-number').textContent = '0';
   document.getElementById('speed-ping').textContent = '--';
   document.getElementById('speed-jitter').textContent = '--';
@@ -556,10 +489,7 @@ function resetGauge() {
 }
 
 function setGauge(mbps) {
-  const circumference = 2 * Math.PI * 58; // 364.42
-  const maxSpeed = 300;
-  const pct = Math.min(mbps / maxSpeed, 1);
-  document.getElementById('gauge-circle').style.strokeDashoffset = circumference * (1 - pct);
+  document.getElementById('gauge-circle').style.strokeDashoffset = Core.gaugeDashOffset(mbps);
 }
 
 function animateNumber(el, target, decimals = 1, duration = 600) {
@@ -575,11 +505,11 @@ function animateNumber(el, target, decimals = 1, duration = 600) {
 }
 
 // ============================================================
-// BREACH CHECK - EMAIL (XposedOrNot + HIBP link fallback)
+// BREACH CHECK - EMAIL (XposedOrNot + HIBP link)
 // ============================================================
 async function checkEmailBreach() {
   const email = document.getElementById('email-input').value.trim();
-  if (!email || !email.includes('@')) {
+  if (!Core.isPlausibleEmail(email)) {
     showToast('Enter a valid email address');
     return;
   }
@@ -588,37 +518,11 @@ async function checkEmailBreach() {
   btn.disabled = true;
   resultEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">Checking breaches...</div>';
 
-  let found = false;
-  let breaches = [];
+  const result = await Core.checkEmailExposure(email);
+  const hibpUrl = `https://haveibeenpwned.com/account/${encodeURIComponent(email)}`;
+  const breaches = result.breaches;
 
-  // Try XposedOrNot API (free, no key)
-  try {
-    const r = await fetch(`https://api.xposedornot.com/v1/check-email/${encodeURIComponent(email)}`);
-    if (r.ok) {
-      const data = await r.json();
-      if (data.breaches && data.breaches.length > 0) {
-        found = true;
-        breaches = data.breaches.map(b => typeof b === 'string' ? { name: b } : b);
-      }
-    } else if (r.status === 404) {
-      // Not found = safe
-    }
-  } catch {
-    // API failed - try alternate
-    try {
-      const r = await fetch(`https://api.xposedornot.com/v1/breach-analytics?email=${encodeURIComponent(email)}`);
-      if (r.ok) {
-        const data = await r.json();
-        const exposedBreaches = data.ExposedBreaches?.breaches_details;
-        if (exposedBreaches && exposedBreaches.length > 0) {
-          found = true;
-          breaches = exposedBreaches.map(b => ({ name: b.breach, domain: b.domain }));
-        }
-      }
-    } catch {}
-  }
-
-  if (found && breaches.length > 0) {
+  if (result.status === 'found') {
     resultEl.innerHTML = `
       <div class="result-card result-card--danger">
         <div class="result-icon">&#x26A0;&#xFE0F;</div>
@@ -626,22 +530,31 @@ async function checkEmailBreach() {
         <div class="result-sub">This email has appeared in known data breaches.</div>
       </div>
       <div class="breach-list">
-        ${breaches.map(b => `<div class="breach-item"><div class="breach-item-name">${esc(b.name || b.breach || 'Unknown')}</div>${b.domain ? `<div class="breach-item-domain">${esc(b.domain)}</div>` : ''}</div>`).join('')}
+        ${breaches.map(b => `<div class="breach-item"><div class="breach-item-name">${esc(b.name)}</div>${b.domain ? `<div class="breach-item-domain">${esc(b.domain)}</div>` : ''}</div>`).join('')}
       </div>
-      <a href="https://haveibeenpwned.com/account/${encodeURIComponent(email)}" target="_blank" rel="noopener" class="hibp-link">View full details on Have I Been Pwned &rarr;</a>
+      <a href="${esc(hibpUrl)}" target="_blank" rel="noopener noreferrer" class="hibp-link">View full details on Have I Been Pwned &rarr;</a>
     `;
-  } else if (found === false) {
+  } else if (result.status === 'clean') {
     resultEl.innerHTML = `
       <div class="result-card result-card--safe">
         <div class="result-icon">&#x2705;</div>
         <div class="result-title">No breaches found</div>
         <div class="result-sub">This email wasn't found in our breach database check.</div>
       </div>
-      <a href="https://haveibeenpwned.com/account/${encodeURIComponent(email)}" target="_blank" rel="noopener" class="hibp-link">Double-check on Have I Been Pwned &rarr;</a>
+      <a href="${esc(hibpUrl)}" target="_blank" rel="noopener noreferrer" class="hibp-link">Double-check on Have I Been Pwned &rarr;</a>
+    `;
+  } else {
+    const reason = result.httpStatus === 429 ? 'The breach service is rate limiting requests. Wait a few minutes and try again.' : 'The breach service could not be reached, so no result is shown.';
+    resultEl.innerHTML = `
+      <div class="result-card">
+        <div class="result-title">Check did not complete</div>
+        <div class="result-sub">${esc(reason)}</div>
+      </div>
+      <a href="${esc(hibpUrl)}" target="_blank" rel="noopener noreferrer" class="hibp-link">Check on Have I Been Pwned instead &rarr;</a>
     `;
   }
 
-  state.breach.email = { email, found, count: breaches.length };
+  state.breach.email = { email, found: result.status === 'found', status: result.status, count: breaches.length };
   btn.disabled = false;
 }
 
@@ -649,7 +562,8 @@ async function checkEmailBreach() {
 // BREACH CHECK - PASSWORD (HIBP k-anonymity)
 // ============================================================
 async function checkPasswordBreach() {
-  const password = document.getElementById('password-input').value;
+  const input = document.getElementById('password-input');
+  const password = input.value;
   if (!password) { showToast('Enter a password to check'); return; }
 
   const resultEl = document.getElementById('password-result');
@@ -658,20 +572,8 @@ async function checkPasswordBreach() {
   resultEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">Checking...</div>';
 
   try {
-    const encoder = new TextEncoder();
-    const hashBuffer = await crypto.subtle.digest('SHA-1', encoder.encode(password));
-    const hashHex = Array.from(new Uint8Array(hashBuffer)).map(b => b.toString(16).padStart(2, '0')).join('').toUpperCase();
-    const prefix = hashHex.substring(0, 5);
-    const suffix = hashHex.substring(5);
-
-    const r = await fetch(`https://api.pwnedpasswords.com/range/${prefix}`);
-    const text = await r.text();
-    let count = 0;
-    for (const line of text.split('\n')) {
-      const [h, c] = line.split(':');
-      if (h.trim() === suffix) { count = parseInt(c.trim(), 10); break; }
-    }
-
+    // Only the first 5 characters of the SHA-1 hash leave the browser.
+    const { count } = await Core.checkPwnedPassword(password);
     if (count === 0) {
       resultEl.innerHTML = `
         <div class="result-card result-card--safe">
@@ -683,14 +585,15 @@ async function checkPasswordBreach() {
       resultEl.innerHTML = `
         <div class="result-card result-card--danger">
           <div class="result-icon">&#x26A0;&#xFE0F;</div>
-          <div class="result-title">Found ${count.toLocaleString()} times</div>
+          <div class="result-title">Found ${esc(count.toLocaleString())} times</div>
           <div class="result-sub">This password has been seen in data breaches. Change it immediately and never reuse it.</div>
         </div>`;
     }
+    // Keep only the count; the password itself is never stored or exported.
     state.breach.password = { count };
   } catch (err) {
-    console.error('Password check error:', err);
-    resultEl.innerHTML = '<div style="color:var(--accent-red);text-align:center;padding:20px;">Error checking password. Try again.</div>';
+    console.error('Password check error:', err.message);
+    resultEl.innerHTML = '<div style="color:var(--accent-red);text-align:center;padding:20px;">Could not reach the breach service. No result is shown. Try again.</div>';
   }
   btn.disabled = false;
 }
@@ -698,9 +601,18 @@ async function checkPasswordBreach() {
 // ============================================================
 // DNS & SECURITY SCAN
 // ============================================================
+async function dohQuery(name, type, extra = '') {
+  const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}${extra}`, { referrerPolicy: 'no-referrer' });
+  if (!r.ok) throw new Error(`DNS query failed with HTTP ${r.status}`);
+  return r.json();
+}
+
 async function runDNSScan() {
   const raw = document.getElementById('scan-input').value.trim();
   if (!raw) { showToast('Enter a domain or email'); return; }
+
+  const domain = Core.normalizeDomainInput(raw);
+  if (!domain) { showToast('Enter a valid domain, URL, or email address'); return; }
 
   const btn = document.getElementById('btn-scan');
   const resultsEl = document.getElementById('scan-results');
@@ -708,27 +620,22 @@ async function runDNSScan() {
   btn.textContent = 'Scanning...';
   resultsEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:24px;">Running scan...</div>';
 
-  // Extract domain from email or raw domain
-  const domain = raw.includes('@') ? raw.split('@')[1] : raw.replace(/^https?:\/\//, '').split('/')[0];
-  const isEmail = raw.includes('@');
-
   let html = '';
 
   // 1. DNS Records
   html += '<div class="scan-section"><div class="scan-section-title">DNS Records</div>';
   const recordTypes = ['A', 'AAAA', 'MX', 'NS'];
+  let mxResponse = null;
   for (const type of recordTypes) {
     try {
-      const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=${type}`);
-      const data = await r.json();
-      if (data.Answer && data.Answer.length > 0) {
-        for (const rec of data.Answer) {
-          html += `<div class="dns-record">
-            <span class="dns-record-type">${dnsTypeName(rec.type)}</span>
-            <span class="dns-record-value">${esc(rec.data)}</span>
-            <span class="dns-record-ttl">TTL ${rec.TTL}s</span>
-          </div>`;
-        }
+      const data = await dohQuery(domain, type);
+      if (type === 'MX') mxResponse = data;
+      for (const rec of data.Answer || []) {
+        html += `<div class="dns-record">
+          <span class="dns-record-type">${esc(Core.dnsTypeName(rec.type))}</span>
+          <span class="dns-record-value">${esc(rec.data)}</span>
+          <span class="dns-record-ttl">TTL ${esc(rec.TTL)}s</span>
+        </div>`;
       }
     } catch {}
   }
@@ -738,48 +645,24 @@ async function runDNSScan() {
   html += '<div class="scan-section"><div class="scan-section-title">Email Security</div>';
   const checks = [];
 
-  // SPF
   try {
-    const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=TXT`);
-    const data = await r.json();
-    const spfRecord = data.Answer?.find(a => a.data && a.data.includes('v=spf1'));
-    if (spfRecord) {
-      checks.push({ icon: 'pass', name: 'SPF Record', detail: 'Sender Policy Framework is configured', value: spfRecord.data });
-    } else {
-      checks.push({ icon: 'fail', name: 'SPF Record', detail: 'No SPF record found - emails can be spoofed' });
-    }
+    checks.push(Core.evaluateSpf(Core.txtValues(await dohQuery(domain, 'TXT'))));
   } catch {
     checks.push({ icon: 'warn', name: 'SPF Record', detail: 'Could not check SPF' });
   }
 
-  // DMARC
   try {
-    const r = await fetch(`https://dns.google/resolve?name=_dmarc.${encodeURIComponent(domain)}&type=TXT`);
-    const data = await r.json();
-    const dmarcRecord = data.Answer?.find(a => a.data && a.data.includes('v=DMARC1'));
-    if (dmarcRecord) {
-      const policy = dmarcRecord.data.match(/p=(\w+)/)?.[1] || 'unknown';
-      checks.push({
-        icon: policy === 'reject' ? 'pass' : policy === 'quarantine' ? 'pass' : 'warn',
-        name: 'DMARC Policy',
-        detail: `Policy: ${policy}${policy === 'none' ? ' (monitoring only - not enforcing)' : ''}`,
-        value: dmarcRecord.data,
-      });
-    } else {
-      checks.push({ icon: 'fail', name: 'DMARC Policy', detail: 'No DMARC record found - domain is vulnerable to email spoofing' });
-    }
+    checks.push(Core.evaluateDmarc(Core.txtValues(await dohQuery(`_dmarc.${domain}`, 'TXT'))));
   } catch {
     checks.push({ icon: 'warn', name: 'DMARC Policy', detail: 'Could not check DMARC' });
   }
 
-  // DKIM (check common selectors)
+  // DKIM selectors are not discoverable, so probe common ones.
   const dkimSelectors = ['default', 'google', 'selector1', 'selector2', 'k1', 's1', 'dkim'];
   let dkimFound = false;
   for (const sel of dkimSelectors) {
     try {
-      const r = await fetch(`https://dns.google/resolve?name=${sel}._domainkey.${encodeURIComponent(domain)}&type=TXT`);
-      const data = await r.json();
-      if (data.Answer && data.Answer.length > 0 && data.Answer.some(a => a.data?.includes('v=DKIM1') || a.data?.includes('p='))) {
+      if (Core.hasDkimKey(Core.txtValues(await dohQuery(`${sel}._domainkey.${domain}`, 'TXT')))) {
         dkimFound = true;
         checks.push({ icon: 'pass', name: 'DKIM', detail: `DKIM key found at selector: ${sel}` });
         break;
@@ -790,42 +673,25 @@ async function runDNSScan() {
     checks.push({ icon: 'info', name: 'DKIM', detail: 'No DKIM keys found at common selectors (may use custom selectors)' });
   }
 
-  // DNSSEC
   try {
-    const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=A&do=1`);
-    const data = await r.json();
-    checks.push({
-      icon: data.AD ? 'pass' : 'warn',
-      name: 'DNSSEC',
-      detail: data.AD ? 'DNSSEC signatures are validated for this domain' : 'DNSSEC is not enabled or not validated',
-    });
+    checks.push(Core.evaluateDnssec(await dohQuery(domain, 'A', '&do=1')));
   } catch {
     checks.push({ icon: 'warn', name: 'DNSSEC', detail: 'Could not verify DNSSEC' });
   }
 
-  // MX check
-  try {
-    const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=MX`);
-    const data = await r.json();
-    if (data.Answer && data.Answer.length > 0) {
-      const mxServers = data.Answer.map(a => a.data).join(', ');
-      checks.push({ icon: 'info', name: 'Mail Servers', detail: `${data.Answer.length} MX record(s) found`, value: mxServers });
+  if (mxResponse) {
+    const answers = mxResponse.Answer || [];
+    if (answers.length > 0) {
+      checks.push({ icon: 'info', name: 'Mail Servers', detail: `${answers.length} MX record(s) found`, value: answers.map(a => a.data).join(', ') });
     } else {
-      checks.push({ icon: 'warn', name: 'Mail Servers', detail: 'No MX records found - domain may not receive email' });
+      checks.push({ icon: 'warn', name: 'Mail Servers', detail: 'No MX records found. The domain may not receive email' });
     }
-  } catch {}
+  }
 
-  // WebRTC leak check
   try {
-    const ips = await checkWebRTC();
-    checks.push({
-      icon: ips.length === 0 ? 'pass' : 'warn',
-      name: 'WebRTC Leak',
-      detail: ips.length === 0 ? 'No local IPs leaked via WebRTC' : `Local IPs detected: ${ips.join(', ')}`,
-    });
+    checks.push(Core.evaluateWebRtc(Core.classifyIceCandidates(await collectIceCandidates()), state.ip));
   } catch {}
 
-  // HTTPS
   checks.push({
     icon: location.protocol === 'https:' ? 'pass' : 'fail',
     name: 'Your Connection',
@@ -836,7 +702,7 @@ async function runDNSScan() {
 
   for (const c of checks) {
     html += `<div class="security-check">
-      <div class="check-icon check-icon--${c.icon}">${c.icon === 'pass' ? '&#x2713;' : c.icon === 'fail' ? '&#x2717;' : c.icon === 'warn' ? '!' : 'i'}</div>
+      <div class="check-icon check-icon--${esc(c.icon)}">${c.icon === 'pass' ? '&#x2713;' : c.icon === 'fail' ? '&#x2717;' : c.icon === 'warn' ? '!' : 'i'}</div>
       <div>
         <div class="check-name">${esc(c.name)}</div>
         <div class="check-detail">${esc(c.detail)}</div>
@@ -851,65 +717,30 @@ async function runDNSScan() {
   btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Scan';
 }
 
-async function checkWebRTC() {
+/** Gather ICE candidate lines for up to 3 seconds. */
+function collectIceCandidates() {
   return new Promise(resolve => {
-    const ips = new Set();
+    const candidates = [];
+    let pc;
+    const finish = () => { try { pc && pc.close(); } catch {} resolve(candidates); };
     try {
-      const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+      pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
       pc.createDataChannel('');
-      pc.createOffer().then(o => pc.setLocalDescription(o));
       pc.onicecandidate = e => {
-        if (!e.candidate) { pc.close(); resolve([...ips]); return; }
-        const parts = e.candidate.candidate.split(' ');
-        if (parts.length > 4) {
-          const ip = parts[4];
-          if (ip && !ip.endsWith('.local') && !ip.includes(':')) ips.add(ip);
-        }
+        if (!e.candidate) { finish(); return; }
+        if (e.candidate.candidate) candidates.push(e.candidate.candidate);
       };
-      setTimeout(() => { pc.close(); resolve([...ips]); }, 3000);
-    } catch { resolve([]); }
+      pc.createOffer().then(o => pc.setLocalDescription(o)).catch(finish);
+      setTimeout(finish, 3000);
+    } catch { resolve(candidates); }
   });
-}
-
-function dnsTypeName(t) {
-  const m = { 1:'A', 2:'NS', 5:'CNAME', 6:'SOA', 15:'MX', 16:'TXT', 28:'AAAA', 33:'SRV', 257:'CAA' };
-  return m[t] || `TYPE${t}`;
 }
 
 // ============================================================
 // EXPORT
 // ============================================================
 function buildText() {
-  const L = ['=== NetScope Results ===', `Generated: ${new Date().toLocaleString()}`, ''];
-  if (state.ip) {
-    L.push('--- IP & Location ---');
-    L.push(`IP: ${state.ip}`);
-    if (state.geo) {
-      const g = state.geo;
-      L.push(`ISP: ${g.isp}`, `Org: ${g.org}`, `ASN: ${g.asn}`, `Type: ${g.type}`);
-      L.push(`Country: ${g.country}`, `Region: ${g.region}`, `City: ${g.city}`);
-      L.push(`Coords: ${g.lat}, ${g.lng}`, `Timezone: ${g.timezone}`);
-    }
-    L.push('');
-  }
-  if (state.speed.ping !== null) {
-    L.push('--- Speed Test ---');
-    L.push(`Ping: ${state.speed.ping?.toFixed(0)} ms`);
-    L.push(`Jitter: ${state.speed.jitter?.toFixed(1)} ms`);
-    L.push(`Download: ${state.speed.download?.toFixed(1)} Mbps`);
-    L.push(`Upload: ${state.speed.upload?.toFixed(1)} Mbps`);
-    L.push('');
-  }
-  if (state.scan) {
-    L.push(`--- DNS & Security: ${state.scan.domain} ---`);
-    state.scan.checks.forEach(c => {
-      const tag = { pass: '[PASS]', fail: '[FAIL]', warn: '[WARN]', info: '[INFO]' }[c.icon] || '[?]';
-      L.push(`${tag} ${c.name}: ${c.detail}`);
-    });
-    L.push('');
-  }
-  L.push('Generated by NetScope');
-  return L.join('\n');
+  return Core.buildTextReport(state);
 }
 
 function exportCopy() {
@@ -976,11 +807,8 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 2500);
 }
 
-function esc(s) {
-  const d = document.createElement('div');
-  d.textContent = s;
-  return d.innerHTML;
-}
+// Escapes &, <, >, " and ' so values are safe in text and quoted attributes.
+const esc = Core.escapeHtml;
 
 // ============================================================
 // THEME
@@ -1098,13 +926,7 @@ function dismissLoadingScreen() {
 // ============================================================
 // PASSWORD GENERATOR
 // ============================================================
-const CHARSETS = {
-  upper: 'ABCDEFGHIJKLMNOPQRSTUVWXYZ',
-  lower: 'abcdefghijklmnopqrstuvwxyz',
-  numbers: '0123456789',
-  symbols: '!@#$%^&*()_+-=[]{}|;:,.<>?',
-  hex: '0123456789abcdef',
-};
+const CHARSETS = Core.CHARSETS;
 
 const WORDLIST = [
   'absorb','accent','acid','acorn','acre','adapt','adjust','admit','adult','advice',
@@ -1282,85 +1104,52 @@ function generatePassword() {
     return;
   }
 
-  if (currentPreset === 'hex') {
-    const length = parseInt(document.getElementById('pwgen-length').value, 10);
-    const arr = new Uint32Array(length);
-    crypto.getRandomValues(arr);
-    let result = '';
-    for (let i = 0; i < length; i++) {
-      result += CHARSETS.hex[arr[i] % 16];
-    }
-    document.getElementById('pwgen-password').textContent = result;
-    updateStrength(result);
-    return;
-  }
-
   const length = parseInt(document.getElementById('pwgen-length').value, 10);
   let pool = '';
-  if (document.getElementById('pwgen-upper').checked) pool += CHARSETS.upper;
-  if (document.getElementById('pwgen-lower').checked) pool += CHARSETS.lower;
-  if (document.getElementById('pwgen-numbers').checked) pool += CHARSETS.numbers;
-  if (document.getElementById('pwgen-symbols').checked) pool += CHARSETS.symbols;
+  if (currentPreset === 'hex') {
+    pool = CHARSETS.hex;
+  } else {
+    if (document.getElementById('pwgen-upper').checked) pool += CHARSETS.upper;
+    if (document.getElementById('pwgen-lower').checked) pool += CHARSETS.lower;
+    if (document.getElementById('pwgen-numbers').checked) pool += CHARSETS.numbers;
+    if (document.getElementById('pwgen-symbols').checked) pool += CHARSETS.symbols;
+  }
 
   if (!pool) {
     showToast('Select at least one character set');
     return;
   }
 
-  const arr = new Uint32Array(length);
-  crypto.getRandomValues(arr);
-  let password = '';
-  for (let i = 0; i < length; i++) {
-    password += pool[arr[i] % pool.length];
-  }
-
-  document.getElementById('pwgen-password').textContent = password;
-  updateStrength(password);
+  // Rejection sampling in core.js keeps every character equally likely.
+  const { value, entropyBits } = Core.generateFromPool(pool, length);
+  document.getElementById('pwgen-password').textContent = value;
+  updateStrength(entropyBits);
 }
 
 function generatePassphrase() {
-  const wordCount = 5;
-  const arr = new Uint32Array(wordCount);
-  crypto.getRandomValues(arr);
-  const words = [];
-  for (let i = 0; i < wordCount; i++) {
-    words.push(WORDLIST[arr[i] % WORDLIST.length]);
-  }
-  const sep = '-';
-  const passphrase = words.join(sep);
-  document.getElementById('pwgen-password').textContent = passphrase;
-  updateStrength(passphrase);
+  const { value, entropyBits } = Core.generatePassphrase(WORDLIST, 5, '-');
+  document.getElementById('pwgen-password').textContent = value;
+  updateStrength(entropyBits);
 }
 
-function updateStrength(password) {
+// Strength comes from how the value was generated (pool size and length, or
+// word list size and word count), not from guessing at the output string.
+function updateStrength(entropyBits) {
   const bar = document.getElementById('pwgen-strength-bar');
   const label = document.getElementById('pwgen-strength-label');
+  const colors = {
+    'weak': 'var(--accent-red)',
+    'fair': 'var(--accent-orange)',
+    'good': 'var(--accent-blue)',
+    'strong': 'var(--accent-cyan)',
+    'very-strong': 'var(--accent-green)',
+  };
+  const strength = Core.strengthFromEntropy(entropyBits);
+  const color = colors[strength.level];
 
-  // Calculate entropy-based strength
-  let poolSize = 0;
-  if (/[a-z]/.test(password)) poolSize += 26;
-  if (/[A-Z]/.test(password)) poolSize += 26;
-  if (/[0-9]/.test(password)) poolSize += 10;
-  if (/[^a-zA-Z0-9]/.test(password)) poolSize += 32;
-
-  const entropy = password.length * Math.log2(poolSize || 1);
-  let pct, color, text;
-
-  if (entropy < 40) {
-    pct = 20; color = 'var(--accent-red)'; text = 'Weak';
-  } else if (entropy < 60) {
-    pct = 40; color = 'var(--accent-orange)'; text = 'Fair';
-  } else if (entropy < 80) {
-    pct = 60; color = 'var(--accent-blue)'; text = 'Good';
-  } else if (entropy < 100) {
-    pct = 80; color = 'var(--accent-cyan)'; text = 'Strong';
-  } else {
-    pct = 100; color = 'var(--accent-green)'; text = 'Very Strong';
-  }
-
-  bar.style.width = pct + '%';
+  bar.style.width = strength.percent + '%';
   bar.style.background = color;
-  label.textContent = `${text} (${Math.round(entropy)} bits of entropy)`;
+  label.textContent = `${strength.label} (${Math.round(entropyBits)} bits of entropy)`;
   label.style.color = color;
 }
 
