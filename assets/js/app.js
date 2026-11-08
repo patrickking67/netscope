@@ -47,8 +47,21 @@ document.addEventListener('DOMContentLoaded', () => {
 let ipFetched = false;
 
 function initTabBar() {
-  document.querySelectorAll('.tab-bar-item').forEach(tab => {
+  const tabs = [...document.querySelectorAll('.tab-bar-item')];
+  tabs.forEach((tab, i) => {
     tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+    // Arrow keys move between tools, as in the WAI-ARIA tabs pattern.
+    tab.addEventListener('keydown', e => {
+      let next = null;
+      if (e.key === 'ArrowRight') next = tabs[(i + 1) % tabs.length];
+      else if (e.key === 'ArrowLeft') next = tabs[(i - 1 + tabs.length) % tabs.length];
+      else if (e.key === 'Home') next = tabs[0];
+      else if (e.key === 'End') next = tabs[tabs.length - 1];
+      if (!next) return;
+      e.preventDefault();
+      next.focus();
+      switchTab(next.dataset.tab);
+    });
   });
 
   // Mobile drawer tool links
@@ -70,7 +83,9 @@ function initTabBar() {
 function switchTab(tabId) {
   // Update tab buttons
   document.querySelectorAll('.tab-bar-item').forEach(t => {
-    t.classList.toggle('active', t.dataset.tab === tabId);
+    const active = t.dataset.tab === tabId;
+    t.classList.toggle('active', active);
+    t.setAttribute('aria-selected', String(active));
   });
 
   // Update panels
@@ -160,8 +175,9 @@ function initExport() {
 function initBreachTabs() {
   document.querySelectorAll('.breach-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      document.querySelectorAll('.breach-tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.breach-tab').forEach(t => { t.classList.remove('active'); t.setAttribute('aria-selected', 'false'); });
       tab.classList.add('active');
+      tab.setAttribute('aria-selected', 'true');
       document.querySelectorAll('.breach-content').forEach(c => c.classList.add('hidden'));
       document.querySelector(`[data-tab-content="${tab.dataset.tab}"]`).classList.remove('hidden');
     });
@@ -172,7 +188,10 @@ function initPasswordToggle() {
   const toggle = document.getElementById('toggle-password');
   const input = document.getElementById('password-input');
   toggle.addEventListener('click', () => {
-    input.type = input.type === 'password' ? 'text' : 'password';
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    toggle.setAttribute('aria-pressed', String(show));
+    toggle.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
   });
 }
 
@@ -199,10 +218,11 @@ async function fetchIPInfo() {
   ];
   for (const url of ipApis) {
     try {
-      const r = await fetch(url);
+      const r = await timedFetch(url);
+      if (!r.ok) continue;
       const d = await r.json();
-      ip = d.ip;
-      if (ip) break;
+      // Only accept a real address; anything else falls through to the next provider.
+      if (d && Core.isIpAddress(d.ip)) { ip = String(d.ip).trim(); break; }
     } catch {}
   }
   if (!ip) {
@@ -221,7 +241,7 @@ async function fetchIPInfo() {
   ];
   for (const api of geoApis) {
     try {
-      const r = await fetch(api.url);
+      const r = await timedFetch(api.url);
       if (!r.ok) continue;
       const d = await r.json();
       const geo = api.parse(d);
@@ -361,7 +381,7 @@ async function testLatency() {
 
 async function testCfAvailable() {
   try {
-    const r = await fetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}&bytes=1000`, { cache: 'no-store' });
+    const r = await timedFetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}&bytes=1000`, { cache: 'no-store' });
     return r.ok;
   } catch { return false; }
 }
@@ -516,45 +536,47 @@ async function checkEmailBreach() {
   const resultEl = document.getElementById('email-result');
   const btn = document.getElementById('btn-email-check');
   btn.disabled = true;
-  resultEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">Checking breaches...</div>';
+  setBusy(resultEl, 'Checking breaches...');
 
-  const result = await Core.checkEmailExposure(email);
+  const result = await Core.checkEmailExposure(email, { fetchImpl: timedFetch });
   const hibpUrl = `https://haveibeenpwned.com/account/${encodeURIComponent(email)}`;
   const breaches = result.breaches;
 
   if (result.status === 'found') {
     resultEl.innerHTML = `
       <div class="result-card result-card--danger">
-        <div class="result-icon">&#x26A0;&#xFE0F;</div>
+        ${ICON_DANGER}
         <div class="result-title">Found in ${breaches.length} breach${breaches.length > 1 ? 'es' : ''}</div>
         <div class="result-sub">This email has appeared in known data breaches.</div>
       </div>
       <div class="breach-list">
         ${breaches.map(b => `<div class="breach-item"><div class="breach-item-name">${esc(b.name)}</div>${b.domain ? `<div class="breach-item-domain">${esc(b.domain)}</div>` : ''}</div>`).join('')}
       </div>
-      <a href="${esc(hibpUrl)}" target="_blank" rel="noopener noreferrer" class="hibp-link">View full details on Have I Been Pwned &rarr;</a>
+      <a href="${esc(hibpUrl)}" target="_blank" rel="noopener noreferrer" class="hibp-link">View full details on Have I Been Pwned</a>
     `;
   } else if (result.status === 'clean') {
     resultEl.innerHTML = `
       <div class="result-card result-card--safe">
-        <div class="result-icon">&#x2705;</div>
+        ${ICON_SAFE}
         <div class="result-title">No breaches found</div>
         <div class="result-sub">This email wasn't found in our breach database check.</div>
       </div>
-      <a href="${esc(hibpUrl)}" target="_blank" rel="noopener noreferrer" class="hibp-link">Double-check on Have I Been Pwned &rarr;</a>
+      <a href="${esc(hibpUrl)}" target="_blank" rel="noopener noreferrer" class="hibp-link">Double-check on Have I Been Pwned</a>
     `;
   } else {
     const reason = result.httpStatus === 429 ? 'The breach service is rate limiting requests. Wait a few minutes and try again.' : 'The breach service could not be reached, so no result is shown.';
     resultEl.innerHTML = `
-      <div class="result-card">
+      <div class="result-card result-card--warn">
+        ${ICON_WARN}
         <div class="result-title">Check did not complete</div>
         <div class="result-sub">${esc(reason)}</div>
       </div>
-      <a href="${esc(hibpUrl)}" target="_blank" rel="noopener noreferrer" class="hibp-link">Check on Have I Been Pwned instead &rarr;</a>
+      <a href="${esc(hibpUrl)}" target="_blank" rel="noopener noreferrer" class="hibp-link">Check on Have I Been Pwned instead</a>
     `;
   }
 
   state.breach.email = { email, found: result.status === 'found', status: result.status, count: breaches.length };
+  resultEl.setAttribute('aria-busy', 'false');
   btn.disabled = false;
 }
 
@@ -569,22 +591,22 @@ async function checkPasswordBreach() {
   const resultEl = document.getElementById('password-result');
   const btn = document.getElementById('btn-password-check');
   btn.disabled = true;
-  resultEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:20px;">Checking...</div>';
+  setBusy(resultEl, 'Checking...');
 
   try {
     // Only the first 5 characters of the SHA-1 hash leave the browser.
-    const { count } = await Core.checkPwnedPassword(password);
+    const { count } = await Core.checkPwnedPassword(password, { fetchImpl: timedFetch });
     if (count === 0) {
       resultEl.innerHTML = `
         <div class="result-card result-card--safe">
-          <div class="result-icon">&#x2705;</div>
+          ${ICON_SAFE}
           <div class="result-title">Not found in any breaches</div>
           <div class="result-sub">This password hasn't appeared in known data breaches. Still use unique passwords everywhere.</div>
         </div>`;
     } else {
       resultEl.innerHTML = `
         <div class="result-card result-card--danger">
-          <div class="result-icon">&#x26A0;&#xFE0F;</div>
+          ${ICON_DANGER}
           <div class="result-title">Found ${esc(count.toLocaleString())} times</div>
           <div class="result-sub">This password has been seen in data breaches. Change it immediately and never reuse it.</div>
         </div>`;
@@ -593,8 +615,9 @@ async function checkPasswordBreach() {
     state.breach.password = { count };
   } catch (err) {
     console.error('Password check error:', err.message);
-    resultEl.innerHTML = '<div style="color:var(--accent-red);text-align:center;padding:20px;">Could not reach the breach service. No result is shown. Try again.</div>';
+    resultEl.innerHTML = statusHtml('Could not reach the breach service, so no result is shown. Check your connection and try again.', 'error');
   }
+  resultEl.setAttribute('aria-busy', 'false');
   btn.disabled = false;
 }
 
@@ -602,9 +625,25 @@ async function checkPasswordBreach() {
 // DNS & SECURITY SCAN
 // ============================================================
 async function dohQuery(name, type, extra = '') {
-  const r = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}${extra}`, { referrerPolicy: 'no-referrer' });
+  const r = await timedFetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}${extra}`, { referrerPolicy: 'no-referrer' });
   if (!r.ok) throw new Error(`DNS query failed with HTTP ${r.status}`);
   return r.json();
+}
+
+const CHECK_GLYPHS = { pass: '&#x2713;', fail: '&#x2717;', warn: '!', info: 'i' };
+const CHECK_LABELS = { pass: 'Pass', fail: 'Fail', warn: 'Warning', info: 'Info' };
+
+function renderCheck(c) {
+  const icon = CHECK_GLYPHS[c.icon] ? c.icon : 'info';
+  return `<div class="security-check">
+      <div class="check-icon check-icon--${icon}" role="img" aria-label="${CHECK_LABELS[icon]}">${CHECK_GLYPHS[icon]}</div>
+      <div>
+        <div class="check-name">${esc(c.name)}</div>
+        <div class="check-detail">${esc(c.detail)}</div>
+        ${c.value ? `<div class="check-value">${esc(c.value)}</div>` : ''}
+        ${c.explain ? `<div class="check-explain">${esc(c.explain)}</div>` : ''}
+      </div>
+    </div>`;
 }
 
 async function runDNSScan() {
@@ -618,103 +657,72 @@ async function runDNSScan() {
   const resultsEl = document.getElementById('scan-results');
   btn.disabled = true;
   btn.textContent = 'Scanning...';
-  resultsEl.innerHTML = '<div style="color:var(--text-muted);text-align:center;padding:24px;">Running scan...</div>';
-
-  let html = '';
-
-  // 1. DNS Records
-  html += '<div class="scan-section"><div class="scan-section-title">DNS Records</div>';
-  const recordTypes = ['A', 'AAAA', 'MX', 'NS'];
-  let mxResponse = null;
-  for (const type of recordTypes) {
-    try {
-      const data = await dohQuery(domain, type);
-      if (type === 'MX') mxResponse = data;
-      for (const rec of data.Answer || []) {
-        html += `<div class="dns-record">
-          <span class="dns-record-type">${esc(Core.dnsTypeName(rec.type))}</span>
-          <span class="dns-record-value">${esc(rec.data)}</span>
-          <span class="dns-record-ttl">TTL ${esc(rec.TTL)}s</span>
-        </div>`;
-      }
-    } catch {}
-  }
-  html += '</div>';
-
-  // 2. Email Security (SPF, DMARC, DKIM)
-  html += '<div class="scan-section"><div class="scan-section-title">Email Security</div>';
-  const checks = [];
+  setBusy(resultsEl, `Scanning ${domain}...`);
 
   try {
-    checks.push(Core.evaluateSpf(Core.txtValues(await dohQuery(domain, 'TXT'))));
-  } catch {
-    checks.push({ icon: 'warn', name: 'SPF Record', detail: 'Could not check SPF' });
-  }
+    const result = await Core.scanDomain(domain, dohQuery);
 
-  try {
-    checks.push(Core.evaluateDmarc(Core.txtValues(await dohQuery(`_dmarc.${domain}`, 'TXT'))));
-  } catch {
-    checks.push({ icon: 'warn', name: 'DMARC Policy', detail: 'Could not check DMARC' });
-  }
-
-  // DKIM selectors are not discoverable, so probe common ones.
-  const dkimSelectors = ['default', 'google', 'selector1', 'selector2', 'k1', 's1', 'dkim'];
-  let dkimFound = false;
-  for (const sel of dkimSelectors) {
-    try {
-      if (Core.hasDkimKey(Core.txtValues(await dohQuery(`${sel}._domainkey.${domain}`, 'TXT')))) {
-        dkimFound = true;
-        checks.push({ icon: 'pass', name: 'DKIM', detail: `DKIM key found at selector: ${sel}` });
-        break;
-      }
-    } catch {}
-  }
-  if (!dkimFound) {
-    checks.push({ icon: 'info', name: 'DKIM', detail: 'No DKIM keys found at common selectors (may use custom selectors)' });
-  }
-
-  try {
-    checks.push(Core.evaluateDnssec(await dohQuery(domain, 'A', '&do=1')));
-  } catch {
-    checks.push({ icon: 'warn', name: 'DNSSEC', detail: 'Could not verify DNSSEC' });
-  }
-
-  if (mxResponse) {
-    const answers = mxResponse.Answer || [];
-    if (answers.length > 0) {
-      checks.push({ icon: 'info', name: 'Mail Servers', detail: `${answers.length} MX record(s) found`, value: answers.map(a => a.data).join(', ') });
-    } else {
-      checks.push({ icon: 'warn', name: 'Mail Servers', detail: 'No MX records found. The domain may not receive email' });
+    if (result.status === 'nxdomain') {
+      state.scan = null;
+      resultsEl.innerHTML = statusHtml(`${domain} does not exist in DNS. Check the spelling and try again.`, 'warn');
+      return;
     }
-  }
+    if (result.status === 'error') {
+      state.scan = null;
+      resultsEl.innerHTML = statusHtml('Could not reach the DNS service, so no result is shown. Check your connection and try again.', 'error');
+      return;
+    }
 
-  try {
-    checks.push(Core.evaluateWebRtc(Core.classifyIceCandidates(await collectIceCandidates()), state.ip));
-  } catch {}
+    const checks = result.checks.slice();
+    try {
+      checks.push(Core.evaluateWebRtc(Core.classifyIceCandidates(await collectIceCandidates()), state.ip));
+    } catch {}
+    checks.push({
+      icon: location.protocol === 'https:' ? 'pass' : 'fail',
+      name: 'Your Connection',
+      detail: location.protocol === 'https:' ? 'You are browsing this page over HTTPS' : 'Not using HTTPS',
+    });
+    state.scan = { domain, checks };
 
-  checks.push({
-    icon: location.protocol === 'https:' ? 'pass' : 'fail',
-    name: 'Your Connection',
-    detail: location.protocol === 'https:' ? 'You are browsing this page over HTTPS' : 'Not using HTTPS',
-  });
-
-  state.scan = { domain, checks };
-
-  for (const c of checks) {
-    html += `<div class="security-check">
-      <div class="check-icon check-icon--${esc(c.icon)}">${c.icon === 'pass' ? '&#x2713;' : c.icon === 'fail' ? '&#x2717;' : c.icon === 'warn' ? '!' : 'i'}</div>
-      <div>
-        <div class="check-name">${esc(c.name)}</div>
-        <div class="check-detail">${esc(c.detail)}</div>
-        ${c.value ? `<div class="check-value">${esc(c.value)}</div>` : ''}
-      </div>
+    const summary = Core.summarizeChecks(result.checks);
+    let html = `<div class="scan-summary scan-summary--${summary.verdict}">
+      <div class="scan-summary-title">${esc(domain)}: ${esc(summary.label)}</div>
+      <div class="scan-summary-counts">${summary.pass} passed, ${summary.warn} warnings, ${summary.fail} failed, ${summary.info} informational</div>
     </div>`;
-  }
-  html += '</div>';
 
-  resultsEl.innerHTML = html;
-  btn.disabled = false;
-  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Scan';
+    html += '<div class="scan-section"><h3 class="scan-section-title">DNS Records</h3>';
+    if (result.records.length === 0) {
+      html += statusHtml('No A, AAAA, MX or NS records were returned for this name.', 'empty');
+    }
+    for (const rec of result.records) {
+      html += `<div class="dns-record">
+          <span class="dns-record-type">${esc(rec.type)}</span>
+          <span class="dns-record-value">${esc(rec.data)}</span>
+          <span class="dns-record-ttl">TTL ${esc(rec.ttl)}s</span>
+        </div>`;
+    }
+    if (result.failedLookups > 0) {
+      html += statusHtml(`${result.failedLookups} record lookup${result.failedLookups > 1 ? 's' : ''} failed, so this list may be incomplete.`, 'warn');
+    }
+    html += '</div>';
+
+    html += '<div class="scan-section"><h3 class="scan-section-title">Email Security</h3>';
+    html += result.checks.map(renderCheck).join('');
+    html += '</div>';
+
+    html += '<div class="scan-section"><h3 class="scan-section-title">Your Browser</h3>';
+    html += checks.slice(result.checks.length).map(renderCheck).join('');
+    html += '</div>';
+
+    resultsEl.innerHTML = html;
+  } catch (err) {
+    console.error('DNS scan error:', err);
+    resultsEl.innerHTML = statusHtml('The scan stopped unexpectedly. No result is shown. Try again.', 'error');
+  } finally {
+    resultsEl.setAttribute('aria-busy', 'false');
+    btn.disabled = false;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" aria-hidden="true"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg> Scan';
+  }
 }
 
 /** Gather ICE candidate lines for up to 3 seconds. */
@@ -809,6 +817,24 @@ function showToast(msg) {
 
 // Escapes &, <, >, " and ' so values are safe in text and quoted attributes.
 const esc = Core.escapeHtml;
+
+// Every third-party call gets a deadline so a stalled provider shows an error instead of spinning forever.
+const timedFetch = (url, init) => Core.fetchWithTimeout(url, init, { timeoutMs: 10000 });
+
+/** One markup pattern for loading, empty, warning and error states across the tools. */
+function statusHtml(message, kind = 'loading') {
+  const role = kind === 'error' ? ' role="alert"' : '';
+  return `<div class="tool-status tool-status--${esc(kind)}"${role}>${esc(message)}</div>`;
+}
+
+function setBusy(el, message) {
+  el.setAttribute('aria-busy', 'true');
+  el.innerHTML = statusHtml(message, 'loading');
+}
+
+const ICON_DANGER = '<div class="result-icon result-icon--danger" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="36" height="36"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>';
+const ICON_SAFE = '<div class="result-icon result-icon--safe" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="36" height="36"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>';
+const ICON_WARN = '<div class="result-icon result-icon--warn" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="36" height="36"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>';
 
 // ============================================================
 // THEME
