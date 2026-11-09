@@ -21,7 +21,7 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 - Muted text, status colors and primary buttons meet WCAG AA contrast in both themes. Focus rings are visible and reduced-motion preferences are respected.
 - Labels are sentence case, the landing badge says what the app does, and per-section scroll animations are gone.
 - On phones the Full Scan button collapses to an icon so the header no longer clips.
-- Service worker cache bumped to `netscope-shell-v3`.
+- Service worker cache bumped to `netscope-shell-v4` so installed copies pick up the speed test and report changes.
 
 ### Fixed
 - Scanning a domain that does not exist now says so instead of grading missing SPF and DMARC as failures.
