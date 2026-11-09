@@ -446,6 +446,208 @@ test('gaugeDashOffset is clamped to the gauge range', () => {
 });
 
 // ------------------------------------------------------------
+// Speed test timing (fake clock, no real network or timers)
+// ------------------------------------------------------------
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+/** Virtual clock: now() and timers share one fake time line that run() advances. */
+function fakeClock() {
+  let time = 0;
+  let seq = 0;
+  const pending = new Map();
+  const timers = {
+    setTimeout(fn, ms) { const id = ++seq; pending.set(id, { at: time + (ms || 0), fn }); return id; },
+    clearTimeout(id) { pending.delete(id); },
+  };
+  return {
+    now: () => time,
+    timers,
+    pendingCount: () => pending.size,
+    /** Fire timers in order until none are left, letting promises settle between them. */
+    async run() {
+      for (let guard = 0; guard < 100000; guard++) {
+        await flush();
+        const next = [...pending.entries()].sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
+        if (!next) return;
+        pending.delete(next[0]);
+        time = next[1].at;
+        next[1].fn();
+      }
+      throw new Error('fake clock did not settle');
+    },
+  };
+}
+
+const after = (clock, ms, value) => new Promise((resolve) => clock.timers.setTimeout(() => resolve(value), ms));
+const never = () => new Promise(() => {});
+
+test('createDeadline aborts with a timeout reason at the deadline, not before', async () => {
+  const clock = fakeClock();
+  const d = Core.createDeadline(1000, { timers: clock.timers });
+  let firedAt = null;
+  d.signal.addEventListener('abort', () => { firedAt = clock.now(); });
+  await clock.run();
+  assert.equal(firedAt, 1000);
+  assert.equal(Core.abortKind(d.signal), 'timeout');
+});
+
+test('createDeadline follows a parent cancel and clear() stops the timer', async () => {
+  const clock = fakeClock();
+  const parent = new AbortController();
+  const d = Core.createDeadline(1000, { signal: parent.signal, timers: clock.timers });
+  parent.abort(Core.speedAbortReason('cancelled'));
+  assert.equal(Core.abortKind(d.signal), 'cancelled');
+  assert.equal(clock.pendingCount(), 0);
+
+  const quiet = Core.createDeadline(1000, { timers: clock.timers });
+  quiet.clear();
+  await clock.run();
+  assert.equal(quiet.signal.aborted, false);
+  assert.equal(Core.abortKind(new AbortController().signal), null);
+});
+
+test('raceAbort rejects on abort even when the work ignores the signal', async () => {
+  const controller = new AbortController();
+  const raced = Core.raceAbort(never(), controller.signal);
+  controller.abort(Core.speedAbortReason('timeout'));
+  await assert.rejects(raced, (err) => err.kind === 'timeout');
+  assert.equal(await Core.raceAbort(Promise.resolve(7), controller.signal).catch((e) => e.kind), 'timeout');
+  assert.equal(await Core.raceAbort(Promise.resolve(7), new AbortController().signal), 7);
+});
+
+test('runTransferPhase completes on a healthy connection and stops near the duration', async () => {
+  const clock = fakeClock();
+  const progress = [];
+  const run = Core.runTransferPhase({
+    transfer: (size) => after(clock, 250, size),
+    now: clock.now, timers: clock.timers,
+    durationMs: 12000, warmupMs: 2000, graceMs: 3000,
+    onProgress: (pct) => progress.push(pct),
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(result.status, 'complete');
+  assert.ok(result.mbps > 0);
+  assert.ok(clock.now() >= 12000 && clock.now() < 12500, `ended at ${clock.now()}`);
+  assert.equal(Math.max(...progress), 100);
+  assert.equal(clock.pendingCount(), 0, 'deadline timer is cleared');
+});
+
+test('runTransferPhase ends a fully stalled phase at the hard deadline with no result', async () => {
+  const clock = fakeClock();
+  const seen = [];
+  const run = Core.runTransferPhase({
+    transfer: (size, id, signal) => { seen.push(signal); return never(); },
+    now: clock.now, timers: clock.timers, durationMs: 12000, graceMs: 3000,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(clock.now(), 15000);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.mbps, null);
+  assert.equal(seen.length, 4);
+  assert.ok(seen.every((s) => s.aborted), 'in-flight requests are aborted');
+});
+
+test('runTransferPhase keeps completed transfers when the connection stalls mid-test', async () => {
+  const clock = fakeClock();
+  let calls = 0;
+  const run = Core.runTransferPhase({
+    transfer: (size) => (++calls <= 12 ? after(clock, 1000, size) : never()),
+    now: clock.now, timers: clock.timers, durationMs: 12000, warmupMs: 2000, graceMs: 3000,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(clock.now(), 15000);
+  assert.equal(result.status, 'partial');
+  assert.equal(result.transfers.length, 12);
+  assert.ok(result.mbps > 0);
+});
+
+test('runTransferPhase stops at once on cancel and returns the speed so far', async () => {
+  const clock = fakeClock();
+  const controller = new AbortController();
+  clock.timers.setTimeout(() => controller.abort(Core.speedAbortReason('cancelled')), 5000);
+  const run = Core.runTransferPhase({
+    transfer: (size) => after(clock, 250, size),
+    signal: controller.signal, now: clock.now, timers: clock.timers,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(result.status, 'cancelled');
+  assert.ok(result.mbps > 0);
+  assert.ok(result.transfers.every((t) => t.endTime <= 5000));
+});
+
+test('runTransferPhase reports a failed phase when every request errors', async () => {
+  const clock = fakeClock();
+  const run = Core.runTransferPhase({
+    transfer: () => Promise.reject(new Error('HTTP 500')),
+    now: clock.now, timers: clock.timers,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(result.status, 'failed');
+  assert.equal(result.mbps, null);
+  assert.equal(clock.now(), 0, 'no waiting for the deadline after errors');
+});
+
+test('measureLatency skips a lost ping and keeps measuring', async () => {
+  const clock = fakeClock();
+  const run = Core.measureLatency({
+    ping: (i) => (i === 3 ? never() : after(clock, 30)),
+    count: 10, pingTimeoutMs: 2000, totalMs: 8000, now: clock.now, timers: clock.timers,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(result.samples.length, 9);
+  assert.equal(result.lost, 1);
+  assert.ok(result.samples.every((s) => s === 30));
+  assert.equal(result.status, 'complete');
+});
+
+test('measureLatency gives up at the phase deadline when every ping stalls', async () => {
+  const clock = fakeClock();
+  const run = Core.measureLatency({
+    ping: never, count: 20, pingTimeoutMs: 2000, totalMs: 8000, now: clock.now, timers: clock.timers,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(clock.now(), 8000);
+  assert.equal(result.samples.length, 0);
+  assert.equal(result.status, 'failed');
+});
+
+test('measureLatency honors a cancel that is already set', async () => {
+  const controller = new AbortController();
+  controller.abort(Core.speedAbortReason('cancelled'));
+  let pings = 0;
+  const result = await Core.measureLatency({ ping: () => { pings++; }, signal: controller.signal, timers: fakeClock().timers });
+  assert.equal(pings, 0);
+  assert.equal(result.status, 'cancelled');
+});
+
+test('summarizeSpeedRun explains complete, partial, cancelled and failed runs', () => {
+  const ok = { status: 'complete', measured: true };
+  assert.equal(Core.summarizeSpeedRun({ latency: ok, download: ok, upload: ok }).status, 'complete');
+
+  const stalled = Core.summarizeSpeedRun({ latency: ok, download: { status: 'partial', measured: true }, upload: ok });
+  assert.equal(stalled.status, 'partial');
+  assert.match(stalled.message, /download test did not finish/);
+  const both = Core.summarizeSpeedRun({ latency: ok, download: { status: 'partial', measured: true }, upload: { status: 'failed', measured: false } });
+  assert.match(both.message, /download and upload tests did not finish/);
+
+  const cancelled = Core.summarizeSpeedRun({ latency: ok, download: { status: 'cancelled', measured: false } });
+  assert.equal(cancelled.status, 'cancelled');
+  assert.match(cancelled.message, /measured so far/);
+  assert.match(Core.summarizeSpeedRun({ latency: { status: 'cancelled', measured: false } }).message, /before anything was measured/);
+
+  const failed = Core.summarizeSpeedRun({ latency: { status: 'failed', measured: false }, download: { status: 'failed', measured: false } });
+  assert.equal(failed.status, 'failed');
+  assert.match(failed.message, /Could not reach/);
+});
+
+// ------------------------------------------------------------
 // IP geolocation parsers
 // ------------------------------------------------------------
 test('geo parsers normalize each provider', () => {
@@ -475,12 +677,12 @@ test('countryFlag builds regional indicators and rejects bad codes', () => {
 // ------------------------------------------------------------
 // Report
 // ------------------------------------------------------------
-test('buildTextReport includes results and never includes a password', () => {
+test('buildTextReport includes results and no password section without a password check', () => {
   const report = Core.buildTextReport({
     ip: '203.0.113.7',
     geo: { isp: 'ISP', org: 'Org', asn: 'AS1', type: 'IPv4', country: 'US', region: 'CA', city: 'LA', lat: 1, lng: 2, timezone: 'PT' },
     speed: { ping: 12.4, jitter: 1.25, download: 300.04, upload: null },
-    breach: { email: null, password: { count: 3 } },
+    breach: { email: null, password: null },
     scan: { domain: 'example.com', checks: [{ icon: 'pass', name: 'SPF Record', detail: 'ok' }, { icon: 'odd', name: 'X', detail: 'y' }] },
   }, new Date(0));
   assert.match(report, /IP: 203\.0\.113\.7/);
@@ -599,15 +801,70 @@ test('scanDomain says a failed lookup could not be checked rather than calling i
   assert.match(dmarc.detail, /Could not look up DMARC/);
 });
 
-test('buildTextReport adds the scan verdict and the email result but no password data', () => {
+test('buildTextReport adds the scan verdict and the email result', () => {
   const report = Core.buildTextReport({
-    breach: { email: { email: 'me@example.com', status: 'found', count: 2 }, password: { count: 9 } },
+    breach: { email: { email: 'me@example.com', status: 'found', count: 2 }, password: null },
     scan: { domain: 'example.com', checks: [{ icon: 'fail', name: 'SPF Record', detail: 'none' }] },
   }, new Date(0));
   assert.match(report, /Email me@example\.com: found in 2 breaches/);
   assert.match(report, /Overall: At risk \(0 pass, 0 warn, 1 fail, 0 info\)/);
-  assert.ok(!/password/i.test(report));
-  assert.ok(!/\b9\b/.test(report));
+  assert.ok(!/Password Check/.test(report));
+});
+
+test('estimatePasswordStrength scores by character classes and length, and breached means weak', () => {
+  assert.deepEqual(Core.estimatePasswordStrength(''), { level: 'weak', label: 'Weak', score: 1, outOf: 5 });
+  assert.equal(Core.estimatePasswordStrength('password').score, 1);
+  assert.equal(Core.estimatePasswordStrength('aaaaaaaaaaaaaaaa').score, 1, 'repeats count half');
+  assert.equal(Core.estimatePasswordStrength('Tr0ub4dor&3').score, 3);
+  assert.equal(Core.estimatePasswordStrength('correct-horse-battery-staple-Z9').score, 5);
+  assert.equal(Core.estimatePasswordStrength('correct-horse-battery-staple-Z9', { breached: true }).score, 1);
+});
+
+test('passwordCheckSummary keeps only found or not found and the strength score', () => {
+  const password = 'hunter2-Example!';
+  const summary = Core.passwordCheckSummary(password, 12345);
+  assert.deepEqual(summary, { found: true, strength: { label: 'Weak', score: 1, outOf: 5 } });
+  assert.deepEqual(Object.keys(summary).sort(), ['found', 'strength']);
+  const clean = Core.passwordCheckSummary(password, 0);
+  assert.equal(clean.found, false);
+  assert.equal(clean.strength.score, 5);
+  assert.ok(!JSON.stringify(summary).includes(password));
+  assert.ok(!JSON.stringify(summary).includes('12345'));
+});
+
+test('buildTextReport password section shows breach status and strength only', async () => {
+  const password = 'hunter2-Example!';
+  const fullHash = await Core.sha1Hex(password);
+  const breached = Core.buildTextReport({ breach: { password: Core.passwordCheckSummary(password, 52256179) } }, new Date(0));
+  assert.match(breached, /--- Password Check ---\nBreached: yes, found in known breaches\nStrength: Weak \(1 of 5\)/);
+
+  const clean = Core.buildTextReport({ breach: { password: Core.passwordCheckSummary(password, 0) } }, new Date(0));
+  assert.match(clean, /Breached: no, not found in known breaches\nStrength: Very Strong \(5 of 5\)/);
+
+  for (const report of [breached, clean]) {
+    assert.ok(!report.includes(password), 'password must not appear');
+    assert.ok(!report.toUpperCase().includes(fullHash), 'full hash must not appear');
+    assert.ok(!report.toUpperCase().includes(fullHash.slice(0, 5)), 'hash prefix must not appear');
+    assert.ok(!/52,?256,?179/.test(report), 'breach count must not appear');
+  }
+});
+
+test('buildTextReport ignores anything but the safe password fields, even if state is polluted', async () => {
+  const password = 'hunter2-Example!';
+  const fullHash = await Core.sha1Hex(password);
+  const report = Core.buildTextReport({
+    breach: { password: { found: false, strength: { label: password, score: 2 }, password, hash: fullHash, count: 9876 } },
+  }, new Date(0));
+  assert.match(report, /Breached: no, not found in known breaches\nStrength: Fair \(2 of 5\)/);
+  assert.ok(!report.includes(password));
+  assert.ok(!report.includes(fullHash));
+  assert.ok(!report.includes('9876'));
+  // A bad score is dropped rather than printed.
+  const bad = Core.buildTextReport({ breach: { password: { found: true, strength: { score: 'x' } } } }, new Date(0));
+  assert.ok(!/Strength:/.test(bad));
+  assert.match(bad, /Breached: yes/);
+  // Old-shape state without a found flag adds nothing.
+  assert.ok(!/Password Check/.test(Core.buildTextReport({ breach: { password: { count: 3 } } }, new Date(0))));
 });
 
 // ------------------------------------------------------------

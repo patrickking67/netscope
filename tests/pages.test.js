@@ -97,7 +97,8 @@ test('password input is never stored, exported or sent anywhere but the k-anonym
   // Bound in initPasswordToggle, initEventListeners and read once in checkPasswordBreach.
   assert.equal(usages, 3);
   assert.ok(!/localStorage\.setItem\([^)]*password/i.test(app));
-  assert.match(app, /state\.breach\.password = \{ count \}/);
+  assert.match(app, /state\.breach\.password = summary;/);
+  assert.match(app, /const summary = Core\.passwordCheckSummary\(password, count\);/);
 });
 
 test('app tool tabs follow the ARIA tabs pattern', () => {
@@ -128,9 +129,10 @@ test('app result regions announce updates and icon-only controls have names', ()
 
 test('every third-party call in app.js goes through the timeout helper', () => {
   const app = read('assets/js/app.js');
-  // Speed test transfers are timed by the test itself and keep plain fetch.
+  // Speed test requests use plain fetch, but each one must carry a deadline signal from the speed test.
   for (const [line] of app.matchAll(/^.*\bfetch\(.*$/gm)) {
-    assert.match(line, /speed\.cloudflare\.com|generate_204|\$\{url\}/, `untimed fetch: ${line.trim()}`);
+    assert.match(line, /speed\.cloudflare\.com|generate_204|fetch\(url, /, `untimed fetch: ${line.trim()}`);
+    assert.match(line, /signal: (deadline\.signal|pingSignal|transferSignal)/, `speed test fetch without a deadline: ${line.trim()}`);
   }
   assert.match(app, /Core\.checkEmailExposure\(email, \{ fetchImpl: timedFetch \}\)/);
   assert.match(app, /Core\.checkPwnedPassword\(password, \{ fetchImpl: timedFetch \}\)/);
