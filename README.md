@@ -37,7 +37,7 @@ The app (`pages/app.html`) has five tools plus a one-click Full Scan.
 | Tool | What it checks | Service used |
 | --- | --- | --- |
 | **IP & Location** | Public IP, ISP, organization, ASN, IP version, proxy and hosting flags (when the provider reports them), approximate location on a map | ipify, seeip (IP); ipapi.co, ipwho.is, freeipapi.com (geolocation, tried in order); OpenStreetMap tiles |
-| **Speed Test** | Ping and jitter (20 samples, outliers trimmed), then 12-second multi-connection download and upload with a 2-second warm-up | Cloudflare speed endpoints |
+| **Speed Test** | Ping and jitter (20 samples, outliers trimmed), then 12-second multi-connection download and upload with a 2-second warm-up. Every request has a deadline and the test can be cancelled; a stalled or cancelled run keeps the results measured so far | Cloudflare speed endpoints |
 | **Breach Check: email** | Whether an address appears in known breaches, with the breach names | XposedOrNot |
 | **Breach Check: password** | How many times a password appears in breach corpora, using k-anonymity | Have I Been Pwned Pwned Passwords |
 | **Password Generator** | Random passwords, PINs, hex keys and 5-word passphrases, with strength computed from the generator's real entropy | None (Web Crypto) |
@@ -115,6 +115,7 @@ What is covered:
 - **WebRTC:** candidate parsing, private ranges, and not flagging the normal STUN public address as a leak.
 - **Generator:** rejection sampling (no modulo bias), entropy from pool size or word list size.
 - **Speed math:** latency trimming and time-ordered jitter, throughput after warm-up.
+- **Speed timing:** with a fake clock and fake transfers, a stalled phase ends at its hard deadline, a cancel stops at once, completed transfers survive as a partial result, and lost pings are skipped.
 - **Service worker:** loaded in a `vm` sandbox to check scope limits, error responses not cached, offline fallback, stale-while-revalidate, and that every page script is in the app shell.
 - **Pages:** CSP present and strict on every page, no inline scripts or handlers, SRI on CDN scripts, every API host the code calls is in `connect-src`, skip link and `<main>` on every page, ARIA tabs, live result regions, named icon buttons, and no untimed third-party `fetch`.
 

@@ -197,6 +197,7 @@ function initPasswordToggle() {
 
 function initEventListeners() {
   document.getElementById('btn-speed-test').addEventListener('click', runSpeedTest);
+  document.getElementById('btn-speed-cancel').addEventListener('click', cancelSpeedTest);
   document.getElementById('btn-email-check').addEventListener('click', checkEmailBreach);
   document.getElementById('btn-password-check').addEventListener('click', checkPasswordBreach);
   document.getElementById('btn-scan').addEventListener('click', runDNSScan);
@@ -294,7 +295,13 @@ function initMap(lat, lng) {
 // ============================================================
 // SPEED TEST - Multi-connection, time-based (Ookla-style)
 // ============================================================
+// Every request runs under a deadline tied to speedController, so a stalled
+// connection ends the phase and Cancel stops the run at once. The timing logic
+// lives in core.js (measureLatency, runTransferPhase) and is unit tested.
 let speedRunning = false;
+let speedController = null;
+
+const SPEED_START_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
 
 function setSpeedProgress(pct) {
   const fill = document.getElementById('speed-progress-fill');
@@ -303,200 +310,206 @@ function setSpeedProgress(pct) {
   if (text) text.textContent = Math.round(pct) + '%';
 }
 
+function cancelSpeedTest() {
+  if (speedController) speedController.abort(Core.speedAbortReason('cancelled'));
+}
+
+/** Runs latency, download and upload. Resolves with { status, message } from Core.summarizeSpeedRun. */
 async function runSpeedTest() {
-  if (speedRunning) return;
+  if (speedRunning) return null;
   speedRunning = true;
+  speedController = new AbortController();
+  const signal = speedController.signal;
   const btn = document.getElementById('btn-speed-test');
+  const cancelBtn = document.getElementById('btn-speed-cancel');
   const phase = document.getElementById('speed-phase');
   const ring = document.getElementById('gauge-ring');
   const progressWrap = document.getElementById('speed-progress-wrap');
-  btn.disabled = true;
-  btn.textContent = 'Testing...';
+  const note = document.getElementById('speed-note');
+  btn.classList.add('hidden');
+  cancelBtn.classList.remove('hidden');
+  cancelBtn.disabled = false;
+  cancelBtn.focus();
   ring.classList.add('active');
   phase.classList.add('active');
+  phase.classList.remove('speed-phase--warn', 'speed-phase--error');
+  note.innerHTML = '';
   if (progressWrap) progressWrap.style.display = '';
   setSpeedProgress(0);
   resetGauge();
+  state.speed = { ping: null, jitter: null, download: null, upload: null, status: null };
+  const phases = {};
 
   try {
-    // LATENCY + JITTER (~10% of total time)
+    // LATENCY + JITTER
     phase.textContent = 'Testing latency...';
     setSpeedProgress(2);
-    const latency = await testLatency();
-    state.speed.ping = latency.ping;
-    state.speed.jitter = latency.jitter;
-    animateNumber(document.getElementById('speed-ping'), latency.ping, 0);
-    animateNumber(document.getElementById('speed-jitter'), latency.jitter, 1);
-    setSpeedProgress(15);
-
-    // DOWNLOAD (multi-connection, ~12s = ~42% of total)
-    phase.textContent = 'Testing download...';
-    const dl = await testMultiDownload(pct => setSpeedProgress(15 + pct * 0.42));
-    state.speed.download = dl;
-    animateNumber(document.getElementById('speed-download'), dl, 1);
-    setGauge(dl);
-    animateNumber(document.getElementById('gauge-number'), dl, 1);
-    setSpeedProgress(57);
-
-    // UPLOAD (multi-connection, ~12s = ~42% of total)
-    phase.textContent = 'Testing upload...';
-    const ul = await testMultiUpload(pct => setSpeedProgress(57 + pct * 0.42));
-    state.speed.upload = ul;
-    animateNumber(document.getElementById('speed-upload'), ul, 1);
-    setSpeedProgress(100);
-
-    phase.textContent = 'Test complete';
-  } catch (err) {
-    console.error('Speed test error:', err);
-    phase.textContent = 'Test finished with partial results';
-    setSpeedProgress(100);
-  } finally {
-    speedRunning = false;
-    btn.disabled = false;
-    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg> Run Again';
-    ring.classList.remove('active');
-    phase.classList.remove('active');
-  }
-}
-
-async function testLatency() {
-  const results = [];
-  // Warmup ping
-  try { await fetch(`https://speed.cloudflare.com/__down?measId=warmup&bytes=0`, { cache: 'no-store' }); } catch {}
-
-  for (let i = 0; i < 20; i++) {
-    const start = performance.now();
-    try {
-      await fetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}-p${i}&bytes=0`, { cache: 'no-store' });
-    } catch {
-      try {
-        await fetch(`https://www.google.com/generate_204?_=${Date.now()}-${i}`, { mode: 'no-cors', cache: 'no-store' });
-      } catch { continue; }
+    const latency = await testLatency(signal);
+    phases.latency = { status: latency.status, measured: latency.samples.length > 0 };
+    if (latency.samples.length) {
+      const { ping, jitter } = Core.summarizeLatency(latency.samples);
+      state.speed.ping = ping;
+      state.speed.jitter = jitter;
+      animateNumber(document.getElementById('speed-ping'), ping, 0);
+      animateNumber(document.getElementById('speed-jitter'), jitter, 1);
     }
-    results.push(performance.now() - start);
+    setSpeedProgress(15);
+    // No ping got through: the network or the test servers are unreachable, so skip the transfers.
+    const reachable = latency.status !== 'failed';
+
+    // DOWNLOAD (multi-connection, ~12s)
+    if (reachable && !signal.aborted) {
+      phase.textContent = 'Testing download...';
+      const dl = await testMultiDownload(signal, pct => setSpeedProgress(15 + pct * 0.42));
+      phases.download = { status: dl.status, measured: dl.mbps !== null };
+      if (dl.mbps !== null) {
+        state.speed.download = dl.mbps;
+        animateNumber(document.getElementById('speed-download'), dl.mbps, 1);
+        setGauge(dl.mbps);
+        animateNumber(document.getElementById('gauge-number'), dl.mbps, 1);
+      }
+      setSpeedProgress(57);
+    }
+
+    // UPLOAD (multi-connection, ~12s)
+    if (reachable && !signal.aborted) {
+      phase.textContent = 'Testing upload...';
+      const ul = await testMultiUpload(signal, pct => setSpeedProgress(57 + pct * 0.42));
+      phases.upload = { status: ul.status, measured: ul.mbps !== null };
+      if (ul.mbps !== null) {
+        state.speed.upload = ul.mbps;
+        animateNumber(document.getElementById('speed-upload'), ul.mbps, 1);
+      }
+    }
+  } catch (err) {
+    // The phases handle their own failures; this only catches programming errors.
+    console.error('Speed test error:', err);
+    phases.error = { status: 'failed', measured: false };
   }
 
-  return Core.summarizeLatency(results);
+  const summary = Core.summarizeSpeedRun(phases);
+  state.speed.status = summary.status;
+  if (summary.status === 'complete') {
+    phase.textContent = summary.message;
+  } else {
+    phase.textContent = summary.status === 'cancelled' ? 'Test cancelled' : summary.status === 'failed' ? 'Test failed' : 'Partial results';
+    phase.classList.add(summary.status === 'failed' ? 'speed-phase--error' : 'speed-phase--warn');
+    note.innerHTML = statusHtml(summary.message, summary.status === 'failed' ? 'error' : 'warn');
+  }
+  setSpeedProgress(summary.status === 'complete' ? 100 : 0);
+  if (progressWrap && summary.status !== 'complete') progressWrap.style.display = 'none';
+
+  speedRunning = false;
+  speedController = null;
+  const hadFocus = document.activeElement === cancelBtn;
+  cancelBtn.classList.add('hidden');
+  btn.classList.remove('hidden');
+  btn.innerHTML = `${SPEED_START_ICON} ${summary.status === 'complete' ? 'Run Again' : 'Try Again'}`;
+  if (hadFocus) btn.focus();
+  ring.classList.remove('active');
+  phase.classList.remove('active');
+  return summary;
 }
 
-async function testCfAvailable() {
+/** One request under its own deadline that also stops when the run is cancelled. */
+async function speedFetch(url, init, signal, timeoutMs) {
+  const deadline = Core.createDeadline(timeoutMs, { signal });
   try {
-    const r = await timedFetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}&bytes=1000`, { cache: 'no-store' });
+    return await Core.raceAbort(fetch(url, { ...init, cache: 'no-store', signal: deadline.signal }), deadline.signal);
+  } finally {
+    deadline.clear();
+  }
+}
+
+async function testLatency(signal) {
+  // Warmup ping
+  try { await speedFetch(`https://speed.cloudflare.com/__down?measId=warmup&bytes=0`, {}, signal, 3000); } catch {}
+
+  return Core.measureLatency({
+    signal,
+    count: 20,
+    pingTimeoutMs: 2000,
+    totalMs: 8000,
+    ping: async (i, pingSignal) => {
+      try {
+        await fetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}-p${i}&bytes=0`, { cache: 'no-store', signal: pingSignal });
+      } catch (err) {
+        if (pingSignal.aborted) throw err;
+        await fetch(`https://www.google.com/generate_204?_=${Date.now()}-${i}`, { mode: 'no-cors', cache: 'no-store', signal: pingSignal });
+      }
+    },
+  });
+}
+
+async function testCfAvailable(signal) {
+  try {
+    const r = await speedFetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}&bytes=1000`, {}, signal, 5000);
     return r.ok;
   } catch { return false; }
 }
 
-async function testMultiDownload(onProgress) {
-  const cfWorks = await testCfAvailable();
-  if (!cfWorks) return await fallbackDownload();
-
-  const CONNECTIONS = 4;
-  const TOTAL_MS = 12000;
-  const WARMUP_MS = 2000;
-  const transfers = [];
-  const testStart = performance.now();
-
-  async function worker(id) {
-    let size = 100000;
-    while (performance.now() - testStart < TOTAL_MS) {
-      const fetchStart = performance.now();
-      try {
-        const r = await fetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}-d${id}&bytes=${size}`, { cache: 'no-store' });
-        const buf = await r.arrayBuffer();
-        const fetchEnd = performance.now();
-        const fetchDuration = fetchEnd - fetchStart;
-        transfers.push({ bytes: buf.byteLength, endTime: fetchEnd });
-
-        // Adaptive payload sizing
-        if (fetchDuration < 500) size = Math.min(size * 6, 25000000);
-        else if (fetchDuration < 1500) size = Math.min(size * 3, 25000000);
-        else if (fetchDuration < 3000) size = Math.min(Math.round(size * 1.5), 25000000);
-
-        // Report progress
-        const pct = Math.min((fetchEnd - testStart) / TOTAL_MS, 1) * 100;
-        if (onProgress) onProgress(pct);
-
-        // Update gauge during measurement window
-        if (fetchEnd - testStart > WARMUP_MS) {
-          const mbps = Core.throughputMbps(transfers, testStart + WARMUP_MS);
-          setGauge(mbps);
-          animateNumber(document.getElementById('gauge-number'), mbps, 1);
-        }
-      } catch { break; }
-    }
-  }
-
-  const workers = [];
-  for (let i = 0; i < CONNECTIONS; i++) workers.push(worker(i));
-  await Promise.allSettled(workers);
-
-  const mbps = Core.throughputMbps(transfers, testStart + WARMUP_MS);
-
+function showLiveSpeed(mbps) {
   setGauge(mbps);
   animateNumber(document.getElementById('gauge-number'), mbps, 1);
-  return mbps;
 }
 
-async function fallbackDownload() {
+async function testMultiDownload(signal, onProgress) {
+  const cfWorks = await testCfAvailable(signal);
+  if (signal.aborted) return { mbps: null, status: 'cancelled' };
+  if (!cfWorks) return await fallbackDownload(signal);
+
+  return Core.runTransferPhase({
+    signal,
+    onProgress,
+    onSample: showLiveSpeed,
+    maxSize: 25000000,
+    transfer: async (size, id, transferSignal) => {
+      const r = await fetch(`https://speed.cloudflare.com/__down?measId=${Date.now()}-d${id}&bytes=${size}`, { cache: 'no-store', signal: transferSignal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const buf = await r.arrayBuffer();
+      return buf.byteLength;
+    },
+  });
+}
+
+/** Smaller files from a CDN when the Cloudflare speed endpoint is blocked. Each request has a 5 second deadline. */
+async function fallbackDownload(signal) {
   const urls = [
     { url: 'https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js', size: 71000 },
     { url: 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js', size: 640000 },
   ];
-  let bestSpeed = 0;
-  for (const { url, size } of urls) {
-    for (let attempt = 0; attempt < 3; attempt++) {
+  let bestSpeed = null;
+  let stalled = false;
+  for (const { url } of urls) {
+    for (let attempt = 0; attempt < 3 && !signal.aborted; attempt++) {
       try {
         const start = performance.now();
-        const r = await fetch(`${url}?_=${Date.now()}-${attempt}`, { cache: 'no-store' });
+        const r = await speedFetch(`${url}?_=${Date.now()}-${attempt}`, {}, signal, 5000);
         const buf = await r.arrayBuffer();
         const secs = (performance.now() - start) / 1000;
         const mbps = (buf.byteLength * 8) / secs / 1e6;
-        if (mbps > bestSpeed) bestSpeed = mbps;
-        setGauge(mbps);
-        animateNumber(document.getElementById('gauge-number'), mbps, 1);
-      } catch { break; }
+        if (bestSpeed === null || mbps > bestSpeed) bestSpeed = mbps;
+        showLiveSpeed(mbps);
+      } catch { stalled = true; break; }
     }
   }
-  return bestSpeed;
+  const kind = Core.abortKind(signal);
+  const status = kind === 'cancelled' ? 'cancelled' : bestSpeed === null ? 'failed' : stalled ? 'partial' : 'complete';
+  return { mbps: bestSpeed, status };
 }
 
-async function testMultiUpload(onProgress) {
-  const CONNECTIONS = 4;
-  const TOTAL_MS = 12000;
-  const WARMUP_MS = 2000;
-  const transfers = [];
-  const testStart = performance.now();
-
-  async function worker(id) {
-    let size = 100000;
-    while (performance.now() - testStart < TOTAL_MS) {
-      const fetchStart = performance.now();
-      try {
-        const data = new Blob([new ArrayBuffer(size)]);
-        const r = await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: data, cache: 'no-store' });
-        if (!r.ok) break;
-        const fetchEnd = performance.now();
-        const fetchDuration = fetchEnd - fetchStart;
-        transfers.push({ bytes: size, endTime: fetchEnd });
-
-        // Report progress
-        const pct = Math.min((fetchEnd - testStart) / TOTAL_MS, 1) * 100;
-        if (onProgress) onProgress(pct);
-
-        if (fetchDuration < 500) size = Math.min(size * 6, 10000000);
-        else if (fetchDuration < 1500) size = Math.min(size * 3, 10000000);
-        else if (fetchDuration < 3000) size = Math.min(Math.round(size * 1.5), 10000000);
-      } catch { break; }
-    }
-  }
-
-  const workers = [];
-  for (let i = 0; i < CONNECTIONS; i++) workers.push(worker(i));
-  await Promise.allSettled(workers);
-
-  const mbps = Core.throughputMbps(transfers, testStart + WARMUP_MS);
-
-  return mbps;
+async function testMultiUpload(signal, onProgress) {
+  return Core.runTransferPhase({
+    signal,
+    onProgress,
+    maxSize: 10000000,
+    transfer: async (size, id, transferSignal) => {
+      const data = new Blob([new ArrayBuffer(size)]);
+      const r = await fetch('https://speed.cloudflare.com/__up', { method: 'POST', body: data, cache: 'no-store', signal: transferSignal });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return size;
+    },
+  });
 }
 
 function resetGauge() {
@@ -1248,8 +1261,9 @@ async function startFullScan() {
     if (fullScanCancelled) return;
     setFsStep('fs-speed', 'running', 'Testing connection...');
     if (subtitle) subtitle.textContent = 'Measuring network speed...';
-    if (!speedRunning) await runSpeedTest();
-    setFsStep('fs-speed', 'done', 'Complete');
+    const speedSummary = speedRunning ? null : await runSpeedTest();
+    const speedLabel = { cancelled: 'Cancelled', partial: 'Partial results', failed: 'Could not run' };
+    setFsStep('fs-speed', 'done', (speedSummary && speedLabel[speedSummary.status]) || 'Complete');
     setFsProgress(60);
 
     // 3. Breach Check (autofill email if signed in)

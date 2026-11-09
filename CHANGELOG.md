@@ -13,6 +13,7 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 - `.claude/launch.json` for the local preview on port 4102, `llms.txt`, CONTRIBUTING.md, this changelog, editor and git attribute files, CODEOWNERS, Dependabot, and issue and pull request templates.
 
 ### Changed
+- Speed test requests have deadlines (2 seconds per ping, 8 seconds for latency, 3 seconds past each 12-second transfer phase), so a stalled connection ends with partial results instead of hanging. A Cancel button stops the test and keeps what was measured.
 - IP, breach and DNS requests time out after 10 seconds instead of hanging, and IP echo responses must be a valid address.
 - DMARC with `pct` under 100 is a warning, not a pass. A null MX record is reported as "does not accept email".
 - Loading, empty, warning and error states look and read the same across tools. Result icons are SVG instead of emoji.

@@ -446,6 +446,208 @@ test('gaugeDashOffset is clamped to the gauge range', () => {
 });
 
 // ------------------------------------------------------------
+// Speed test timing (fake clock, no real network or timers)
+// ------------------------------------------------------------
+const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+/** Virtual clock: now() and timers share one fake time line that run() advances. */
+function fakeClock() {
+  let time = 0;
+  let seq = 0;
+  const pending = new Map();
+  const timers = {
+    setTimeout(fn, ms) { const id = ++seq; pending.set(id, { at: time + (ms || 0), fn }); return id; },
+    clearTimeout(id) { pending.delete(id); },
+  };
+  return {
+    now: () => time,
+    timers,
+    pendingCount: () => pending.size,
+    /** Fire timers in order until none are left, letting promises settle between them. */
+    async run() {
+      for (let guard = 0; guard < 100000; guard++) {
+        await flush();
+        const next = [...pending.entries()].sort((a, b) => a[1].at - b[1].at || a[0] - b[0])[0];
+        if (!next) return;
+        pending.delete(next[0]);
+        time = next[1].at;
+        next[1].fn();
+      }
+      throw new Error('fake clock did not settle');
+    },
+  };
+}
+
+const after = (clock, ms, value) => new Promise((resolve) => clock.timers.setTimeout(() => resolve(value), ms));
+const never = () => new Promise(() => {});
+
+test('createDeadline aborts with a timeout reason at the deadline, not before', async () => {
+  const clock = fakeClock();
+  const d = Core.createDeadline(1000, { timers: clock.timers });
+  let firedAt = null;
+  d.signal.addEventListener('abort', () => { firedAt = clock.now(); });
+  await clock.run();
+  assert.equal(firedAt, 1000);
+  assert.equal(Core.abortKind(d.signal), 'timeout');
+});
+
+test('createDeadline follows a parent cancel and clear() stops the timer', async () => {
+  const clock = fakeClock();
+  const parent = new AbortController();
+  const d = Core.createDeadline(1000, { signal: parent.signal, timers: clock.timers });
+  parent.abort(Core.speedAbortReason('cancelled'));
+  assert.equal(Core.abortKind(d.signal), 'cancelled');
+  assert.equal(clock.pendingCount(), 0);
+
+  const quiet = Core.createDeadline(1000, { timers: clock.timers });
+  quiet.clear();
+  await clock.run();
+  assert.equal(quiet.signal.aborted, false);
+  assert.equal(Core.abortKind(new AbortController().signal), null);
+});
+
+test('raceAbort rejects on abort even when the work ignores the signal', async () => {
+  const controller = new AbortController();
+  const raced = Core.raceAbort(never(), controller.signal);
+  controller.abort(Core.speedAbortReason('timeout'));
+  await assert.rejects(raced, (err) => err.kind === 'timeout');
+  assert.equal(await Core.raceAbort(Promise.resolve(7), controller.signal).catch((e) => e.kind), 'timeout');
+  assert.equal(await Core.raceAbort(Promise.resolve(7), new AbortController().signal), 7);
+});
+
+test('runTransferPhase completes on a healthy connection and stops near the duration', async () => {
+  const clock = fakeClock();
+  const progress = [];
+  const run = Core.runTransferPhase({
+    transfer: (size) => after(clock, 250, size),
+    now: clock.now, timers: clock.timers,
+    durationMs: 12000, warmupMs: 2000, graceMs: 3000,
+    onProgress: (pct) => progress.push(pct),
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(result.status, 'complete');
+  assert.ok(result.mbps > 0);
+  assert.ok(clock.now() >= 12000 && clock.now() < 12500, `ended at ${clock.now()}`);
+  assert.equal(Math.max(...progress), 100);
+  assert.equal(clock.pendingCount(), 0, 'deadline timer is cleared');
+});
+
+test('runTransferPhase ends a fully stalled phase at the hard deadline with no result', async () => {
+  const clock = fakeClock();
+  const seen = [];
+  const run = Core.runTransferPhase({
+    transfer: (size, id, signal) => { seen.push(signal); return never(); },
+    now: clock.now, timers: clock.timers, durationMs: 12000, graceMs: 3000,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(clock.now(), 15000);
+  assert.equal(result.status, 'failed');
+  assert.equal(result.mbps, null);
+  assert.equal(seen.length, 4);
+  assert.ok(seen.every((s) => s.aborted), 'in-flight requests are aborted');
+});
+
+test('runTransferPhase keeps completed transfers when the connection stalls mid-test', async () => {
+  const clock = fakeClock();
+  let calls = 0;
+  const run = Core.runTransferPhase({
+    transfer: (size) => (++calls <= 12 ? after(clock, 1000, size) : never()),
+    now: clock.now, timers: clock.timers, durationMs: 12000, warmupMs: 2000, graceMs: 3000,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(clock.now(), 15000);
+  assert.equal(result.status, 'partial');
+  assert.equal(result.transfers.length, 12);
+  assert.ok(result.mbps > 0);
+});
+
+test('runTransferPhase stops at once on cancel and returns the speed so far', async () => {
+  const clock = fakeClock();
+  const controller = new AbortController();
+  clock.timers.setTimeout(() => controller.abort(Core.speedAbortReason('cancelled')), 5000);
+  const run = Core.runTransferPhase({
+    transfer: (size) => after(clock, 250, size),
+    signal: controller.signal, now: clock.now, timers: clock.timers,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(result.status, 'cancelled');
+  assert.ok(result.mbps > 0);
+  assert.ok(result.transfers.every((t) => t.endTime <= 5000));
+});
+
+test('runTransferPhase reports a failed phase when every request errors', async () => {
+  const clock = fakeClock();
+  const run = Core.runTransferPhase({
+    transfer: () => Promise.reject(new Error('HTTP 500')),
+    now: clock.now, timers: clock.timers,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(result.status, 'failed');
+  assert.equal(result.mbps, null);
+  assert.equal(clock.now(), 0, 'no waiting for the deadline after errors');
+});
+
+test('measureLatency skips a lost ping and keeps measuring', async () => {
+  const clock = fakeClock();
+  const run = Core.measureLatency({
+    ping: (i) => (i === 3 ? never() : after(clock, 30)),
+    count: 10, pingTimeoutMs: 2000, totalMs: 8000, now: clock.now, timers: clock.timers,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(result.samples.length, 9);
+  assert.equal(result.lost, 1);
+  assert.ok(result.samples.every((s) => s === 30));
+  assert.equal(result.status, 'complete');
+});
+
+test('measureLatency gives up at the phase deadline when every ping stalls', async () => {
+  const clock = fakeClock();
+  const run = Core.measureLatency({
+    ping: never, count: 20, pingTimeoutMs: 2000, totalMs: 8000, now: clock.now, timers: clock.timers,
+  });
+  await clock.run();
+  const result = await run;
+  assert.equal(clock.now(), 8000);
+  assert.equal(result.samples.length, 0);
+  assert.equal(result.status, 'failed');
+});
+
+test('measureLatency honors a cancel that is already set', async () => {
+  const controller = new AbortController();
+  controller.abort(Core.speedAbortReason('cancelled'));
+  let pings = 0;
+  const result = await Core.measureLatency({ ping: () => { pings++; }, signal: controller.signal, timers: fakeClock().timers });
+  assert.equal(pings, 0);
+  assert.equal(result.status, 'cancelled');
+});
+
+test('summarizeSpeedRun explains complete, partial, cancelled and failed runs', () => {
+  const ok = { status: 'complete', measured: true };
+  assert.equal(Core.summarizeSpeedRun({ latency: ok, download: ok, upload: ok }).status, 'complete');
+
+  const stalled = Core.summarizeSpeedRun({ latency: ok, download: { status: 'partial', measured: true }, upload: ok });
+  assert.equal(stalled.status, 'partial');
+  assert.match(stalled.message, /download test did not finish/);
+  const both = Core.summarizeSpeedRun({ latency: ok, download: { status: 'partial', measured: true }, upload: { status: 'failed', measured: false } });
+  assert.match(both.message, /download and upload tests did not finish/);
+
+  const cancelled = Core.summarizeSpeedRun({ latency: ok, download: { status: 'cancelled', measured: false } });
+  assert.equal(cancelled.status, 'cancelled');
+  assert.match(cancelled.message, /measured so far/);
+  assert.match(Core.summarizeSpeedRun({ latency: { status: 'cancelled', measured: false } }).message, /before anything was measured/);
+
+  const failed = Core.summarizeSpeedRun({ latency: { status: 'failed', measured: false }, download: { status: 'failed', measured: false } });
+  assert.equal(failed.status, 'failed');
+  assert.match(failed.message, /Could not reach/);
+});
+
+// ------------------------------------------------------------
 // IP geolocation parsers
 // ------------------------------------------------------------
 test('geo parsers normalize each provider', () => {

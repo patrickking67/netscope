@@ -646,6 +646,192 @@
   }
 
   // ============================================================
+  // SPEED TEST TIMING (deadlines, cancel, partial results)
+  // ============================================================
+  // Every speed test request runs under a deadline linked to the run's cancel
+  // signal, so a stalled connection ends the phase instead of hanging the tool.
+  // Clocks and timers are injectable so tests can drive time with fakes.
+  const defaultTimers = {
+    setTimeout: (fn, ms) => setTimeout(fn, ms),
+    clearTimeout: (id) => clearTimeout(id),
+  };
+  const defaultNow = () => (globalThis.performance ? globalThis.performance.now() : Date.now());
+
+  /** Abort reason that says why: 'cancelled' (user) or 'timeout' (deadline). */
+  function speedAbortReason(kind) {
+    const err = new Error(kind === 'timeout' ? 'Speed test request timed out' : 'Speed test cancelled');
+    err.name = kind === 'timeout' ? 'TimeoutError' : 'AbortError';
+    err.kind = kind === 'timeout' ? 'timeout' : 'cancelled';
+    return err;
+  }
+
+  /** 'cancelled', 'timeout' or null for a signal. An abort without a reason counts as cancelled. */
+  function abortKind(signal) {
+    if (!signal || !signal.aborted) return null;
+    const reason = signal.reason;
+    return reason && reason.kind === 'timeout' ? 'timeout' : 'cancelled';
+  }
+
+  /**
+   * An AbortSignal that fires after timeoutMs or when the parent signal aborts,
+   * whichever comes first. Call clear() when the work finishes.
+   */
+  function createDeadline(timeoutMs, options = {}) {
+    const timers = options.timers || defaultTimers;
+    const parent = options.signal;
+    const controller = new AbortController();
+    let timer = null;
+    const onParent = () => abort(parent.reason || speedAbortReason('cancelled'));
+    function clear() {
+      if (timer !== null) { timers.clearTimeout(timer); timer = null; }
+      if (parent) parent.removeEventListener('abort', onParent);
+    }
+    function abort(reason) {
+      if (!controller.signal.aborted) controller.abort(reason);
+      clear();
+    }
+    if (parent && parent.aborted) {
+      abort(parent.reason || speedAbortReason('cancelled'));
+    } else {
+      if (parent) parent.addEventListener('abort', onParent);
+      if (Number.isFinite(timeoutMs)) timer = timers.setTimeout(() => abort(speedAbortReason('timeout')), timeoutMs);
+    }
+    return { signal: controller.signal, clear };
+  }
+
+  /** Rejects with the signal's reason as soon as it aborts, even if the work ignores the signal. */
+  function raceAbort(promise, signal) {
+    if (!signal) return promise;
+    if (signal.aborted) return Promise.reject(signal.reason || speedAbortReason('cancelled'));
+    let onAbort;
+    const aborted = new Promise((_, reject) => {
+      onAbort = () => reject(signal.reason || speedAbortReason('cancelled'));
+      signal.addEventListener('abort', onAbort);
+    });
+    return Promise.race([promise, aborted]).finally(() => signal.removeEventListener('abort', onAbort));
+  }
+
+  /**
+   * Phase outcome: cancelled (user), failed (nothing measured), partial (some
+   * results, but a request stalled past its deadline or errored) or complete.
+   */
+  function phaseStatus(parent, deadline, measured, failed) {
+    if (abortKind(parent) === 'cancelled') return 'cancelled';
+    if (measured === 0) return 'failed';
+    if (abortKind(deadline) === 'timeout' || failed) return 'partial';
+    return 'complete';
+  }
+
+  /**
+   * Latency samples. ping(i, signal) does one round trip. Each ping has its own
+   * deadline (a lost ping is skipped) and the whole phase has a hard deadline.
+   * Returns { samples, lost, status } (see phaseStatus).
+   */
+  async function measureLatency(options) {
+    const { ping, count = 20, pingTimeoutMs = 2000, totalMs = 8000, signal } = options;
+    const timers = options.timers || defaultTimers;
+    const now = options.now || defaultNow;
+    const phase = createDeadline(totalMs, { signal, timers });
+    const samples = [];
+    let lost = 0;
+    try {
+      for (let i = 0; i < count && !phase.signal.aborted; i++) {
+        const one = createDeadline(pingTimeoutMs, { signal: phase.signal, timers });
+        const start = now();
+        try {
+          await raceAbort(Promise.resolve().then(() => ping(i, one.signal)), one.signal);
+          samples.push(now() - start);
+        } catch {
+          if (phase.signal.aborted) break;
+          lost++;
+        } finally {
+          one.clear();
+        }
+      }
+    } finally {
+      phase.clear();
+    }
+    const status = phaseStatus(signal, phase.signal, samples.length, lost > 0 && samples.length < count / 2);
+    return { samples, lost, status };
+  }
+
+  /**
+   * Time-based multi-connection transfer phase (download or upload).
+   * transfer(size, id, signal) moves `size` bytes and resolves with the byte
+   * count. Workers keep going until durationMs; anything still in flight at
+   * durationMs + graceMs is aborted. Completed transfers always count, so a
+   * cancelled or stalled phase still reports a partial speed.
+   * Returns { mbps (null when nothing finished), transfers, status }.
+   */
+  async function runTransferPhase(options) {
+    const {
+      transfer, signal, onProgress, onSample,
+      connections = 4, durationMs = 12000, warmupMs = 2000, graceMs = 3000,
+      initialSize = 100000, maxSize = 25000000,
+    } = options;
+    const timers = options.timers || defaultTimers;
+    const now = options.now || defaultNow;
+    const phase = createDeadline(durationMs + graceMs, { signal, timers });
+    const transfers = [];
+    const start = now();
+    let failed = false;
+
+    async function worker(id) {
+      let size = initialSize;
+      while (now() - start < durationMs && !phase.signal.aborted) {
+        const fetchStart = now();
+        try {
+          const bytes = await raceAbort(Promise.resolve().then(() => transfer(size, id, phase.signal)), phase.signal);
+          const fetchEnd = now();
+          transfers.push({ bytes: Number(bytes) || 0, endTime: fetchEnd });
+          const took = fetchEnd - fetchStart;
+          if (took < 500) size = Math.min(size * 6, maxSize);
+          else if (took < 1500) size = Math.min(size * 3, maxSize);
+          else if (took < 3000) size = Math.min(Math.round(size * 1.5), maxSize);
+          if (onProgress) onProgress(Math.min((fetchEnd - start) / durationMs, 1) * 100);
+          if (onSample && fetchEnd - start > warmupMs) onSample(throughputMbps(transfers, start + warmupMs));
+        } catch {
+          if (!phase.signal.aborted) failed = true;
+          break;
+        }
+      }
+    }
+
+    try {
+      const workers = [];
+      for (let i = 0; i < connections; i++) workers.push(worker(i));
+      await Promise.allSettled(workers);
+    } finally {
+      phase.clear();
+    }
+    let mbps = null;
+    if (transfers.length) mbps = throughputMbps(transfers, start + warmupMs) || throughputMbps(transfers, start);
+    return { mbps, transfers, status: phaseStatus(signal, phase.signal, transfers.length, failed) };
+  }
+
+  /**
+   * Overall verdict for the UI and report. phases maps a phase name to
+   * { status, measured } in run order; measured is true when that phase has a
+   * number to show. Returns { status: complete | partial | cancelled | failed, message }.
+   */
+  function summarizeSpeedRun(phases) {
+    const entries = Object.entries(phases || {}).filter(([, p]) => p && p.status);
+    const anyMeasured = entries.some(([, p]) => p.measured);
+    if (entries.some(([, p]) => p.status === 'cancelled')) {
+      return anyMeasured
+        ? { status: 'cancelled', message: 'Test cancelled. Results measured so far are shown.' }
+        : { status: 'cancelled', message: 'Test cancelled before anything was measured.' };
+    }
+    if (!anyMeasured) {
+      return { status: 'failed', message: 'Could not reach the speed test server. Check your connection and try again.' };
+    }
+    const problems = entries.filter(([, p]) => p.status !== 'complete').map(([name]) => name);
+    if (!problems.length) return { status: 'complete', message: 'Test complete' };
+    const which = problems.length === 1 ? `${problems[0]} test` : `${problems.slice(0, -1).join(', ')} and ${problems[problems.length - 1]} tests`;
+    return { status: 'partial', message: `The ${which} did not finish because the connection stalled or dropped. Partial results are shown.` };
+  }
+
+  // ============================================================
   // IP GEOLOCATION PARSERS
   // ============================================================
   function parseIpapiCo(d) {
@@ -756,6 +942,7 @@
     isIPv4, isIPv6, isPrivateIPv4, parseIceCandidate, classifyIceCandidates, evaluateWebRtc,
     CHARSETS, secureRandomInt, generateFromPool, generatePassphrase, strengthFromEntropy,
     summarizeLatency, throughputMbps, gaugeDashOffset, GAUGE_CIRCUMFERENCE,
+    speedAbortReason, abortKind, createDeadline, raceAbort, measureLatency, runTransferPhase, summarizeSpeedRun,
     parseIpapiCo, parseIpwhois, parseFreeipapi, countryFlag,
     buildTextReport,
   };

@@ -463,6 +463,10 @@ input, select { font-family: inherit; color: inherit; }
   transition: color 0.3s ease;
 }
 .speed-phase.active { color: var(--accent-purple); }
+.speed-phase--warn { color: var(--accent-orange); }
+.speed-phase--error { color: var(--accent-red); }
+.speed-note:empty { display: none; }
+.speed-note .tool-status { margin: 0 0 12px; }
 .speed-metrics {
   display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
 }

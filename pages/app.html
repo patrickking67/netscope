@@ -314,7 +314,7 @@
                 </svg>
                 <div class="gauge-center"><span class="gauge-number" id="gauge-number">--</span><span class="gauge-unit">Mbps</span></div>
               </div>
-              <div class="speed-phase" id="speed-phase">Ready</div>
+              <div class="speed-phase" id="speed-phase" role="status" aria-live="polite">Ready</div>
               <div class="speed-progress-wrap" id="speed-progress-wrap" style="display:none;">
                 <div class="speed-progress-bar"><div class="speed-progress-fill" id="speed-progress-fill"></div></div>
                 <span class="speed-progress-text" id="speed-progress-text">0%</span>
@@ -327,7 +327,9 @@
               <div class="speed-metric"><div class="metric-icon metric-icon--upload"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div><span class="metric-label">Upload</span><div class="metric-row"><span class="metric-value" id="speed-upload">--</span><span class="metric-unit">Mbps</span></div></div>
             </div>
           </div>
+          <div class="speed-note" id="speed-note" aria-live="polite"></div>
           <button class="btn btn--primary btn--full" id="btn-speed-test"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg> Start Speed Test</button>
+          <button type="button" class="btn btn--ghost btn--full hidden" id="btn-speed-cancel">Cancel test</button>
         </section>
       </div>
 
