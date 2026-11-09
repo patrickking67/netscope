@@ -43,7 +43,7 @@ The app (`pages/app.html`) has five tools plus a one-click Full Scan.
 | **Password Generator** | Random passwords, PINs, hex keys and 5-word passphrases, with strength computed from the generator's real entropy | None (Web Crypto) |
 | **DNS & Security** | A, AAAA, MX and NS records (null MX recognized); SPF (missing, duplicate, `+all`, `?all`); DMARC policy and partial `pct=`; DKIM at 18 common selectors; DNSSEC validation; MTA-STS; SMTP TLS reporting; BIMI; WebRTC local address and VPN leak check; whether the page is on HTTPS. One overall verdict, and a plain-language explanation under each check | Google DNS-over-HTTPS; Google STUN |
 
-**Full Scan** runs IP, speed, email breach (if an address is entered or you are signed in) and DNS (if a domain is entered) in sequence. Results, including the scan verdict and the email breach result, can be copied, emailed, or downloaded as a PDF (jsPDF). Password checks are never exported. Optional sign-in (Google, GitHub or email via Firebase) adds cloud save of results and theme sync. Every tool works without an account.
+**Full Scan** runs IP, speed, email breach (if an address is entered or you are signed in) and DNS (if a domain is entered) in sequence. Results, including the scan verdict and the email breach result, can be copied, emailed, or downloaded as a PDF (jsPDF). A password check adds only whether the password was found in a breach and an estimated strength score from 1 to 5; the password, its hash and the breach count are never exported. Optional sign-in (Google, GitHub or email via Firebase) adds cloud save of results and theme sync. Every tool works without an account.
 
 ## Privacy model
 
@@ -109,6 +109,7 @@ npm run check:static  # asset links, JS syntax, PWA files, required docs, llms.t
 What is covered:
 
 - **k-anonymity:** with a recording `fetch`, asserts only the 5-character prefix is sent and the password, full hash and suffix never appear in the request; HTTP errors throw instead of returning zero.
+- **Password report:** the export shows breach found or not and a strength score, and never the password, its full hash, the hash prefix or the breach count, even if extra fields end up in state.
 - **Breach parsing:** both XposedOrNot response shapes, 404 as clean, 429 and 5xx as errors, the network fallback.
 - **DNS grading:** domain input normalization, quoted TXT joining, SPF and DMARC edge cases (including `sp=` not being mistaken for `p=` and partial `pct=`), revoked DKIM keys, MTA-STS, TLS-RPT, BIMI, null MX, and `scanDomain` against a fake resolver for NXDOMAIN, total failure and single failed lookups.
 - **Timeouts:** `fetchWithTimeout` aborts a request that never answers and leaves ordinary errors alone.

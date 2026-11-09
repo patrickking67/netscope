@@ -609,12 +609,15 @@ async function checkPasswordBreach() {
   try {
     // Only the first 5 characters of the SHA-1 hash leave the browser.
     const { count } = await Core.checkPwnedPassword(password, { fetchImpl: timedFetch });
+    const summary = Core.passwordCheckSummary(password, count);
+    const strengthLine = `<div class="result-sub">Estimated strength: ${esc(summary.strength.label)} (${summary.strength.score} of 5)</div>`;
     if (count === 0) {
       resultEl.innerHTML = `
         <div class="result-card result-card--safe">
           ${ICON_SAFE}
           <div class="result-title">Not found in any breaches</div>
           <div class="result-sub">This password hasn't appeared in known data breaches. Still use unique passwords everywhere.</div>
+          ${strengthLine}
         </div>`;
     } else {
       resultEl.innerHTML = `
@@ -622,12 +625,15 @@ async function checkPasswordBreach() {
           ${ICON_DANGER}
           <div class="result-title">Found ${esc(count.toLocaleString())} times</div>
           <div class="result-sub">This password has been seen in data breaches. Change it immediately and never reuse it.</div>
+          ${strengthLine}
         </div>`;
     }
-    // Keep only the count; the password itself is never stored or exported.
-    state.breach.password = { count };
+    // Keep only found or not found and the strength score for the report.
+    // The password, its hash and the breach count are never stored or exported.
+    state.breach.password = summary;
   } catch (err) {
     console.error('Password check error:', err.message);
+    state.breach.password = null;
     resultEl.innerHTML = statusHtml('Could not reach the breach service, so no result is shown. Check your connection and try again.', 'error');
   }
   resultEl.setAttribute('aria-busy', 'false');

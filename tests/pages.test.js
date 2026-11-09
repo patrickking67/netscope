@@ -97,7 +97,8 @@ test('password input is never stored, exported or sent anywhere but the k-anonym
   // Bound in initPasswordToggle, initEventListeners and read once in checkPasswordBreach.
   assert.equal(usages, 3);
   assert.ok(!/localStorage\.setItem\([^)]*password/i.test(app));
-  assert.match(app, /state\.breach\.password = \{ count \}/);
+  assert.match(app, /state\.breach\.password = summary;/);
+  assert.match(app, /const summary = Core\.passwordCheckSummary\(password, count\);/);
 });
 
 test('app tool tabs follow the ARIA tabs pattern', () => {

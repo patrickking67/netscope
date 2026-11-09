@@ -677,12 +677,12 @@ test('countryFlag builds regional indicators and rejects bad codes', () => {
 // ------------------------------------------------------------
 // Report
 // ------------------------------------------------------------
-test('buildTextReport includes results and never includes a password', () => {
+test('buildTextReport includes results and no password section without a password check', () => {
   const report = Core.buildTextReport({
     ip: '203.0.113.7',
     geo: { isp: 'ISP', org: 'Org', asn: 'AS1', type: 'IPv4', country: 'US', region: 'CA', city: 'LA', lat: 1, lng: 2, timezone: 'PT' },
     speed: { ping: 12.4, jitter: 1.25, download: 300.04, upload: null },
-    breach: { email: null, password: { count: 3 } },
+    breach: { email: null, password: null },
     scan: { domain: 'example.com', checks: [{ icon: 'pass', name: 'SPF Record', detail: 'ok' }, { icon: 'odd', name: 'X', detail: 'y' }] },
   }, new Date(0));
   assert.match(report, /IP: 203\.0\.113\.7/);
@@ -801,15 +801,70 @@ test('scanDomain says a failed lookup could not be checked rather than calling i
   assert.match(dmarc.detail, /Could not look up DMARC/);
 });
 
-test('buildTextReport adds the scan verdict and the email result but no password data', () => {
+test('buildTextReport adds the scan verdict and the email result', () => {
   const report = Core.buildTextReport({
-    breach: { email: { email: 'me@example.com', status: 'found', count: 2 }, password: { count: 9 } },
+    breach: { email: { email: 'me@example.com', status: 'found', count: 2 }, password: null },
     scan: { domain: 'example.com', checks: [{ icon: 'fail', name: 'SPF Record', detail: 'none' }] },
   }, new Date(0));
   assert.match(report, /Email me@example\.com: found in 2 breaches/);
   assert.match(report, /Overall: At risk \(0 pass, 0 warn, 1 fail, 0 info\)/);
-  assert.ok(!/password/i.test(report));
-  assert.ok(!/\b9\b/.test(report));
+  assert.ok(!/Password Check/.test(report));
+});
+
+test('estimatePasswordStrength scores by character classes and length, and breached means weak', () => {
+  assert.deepEqual(Core.estimatePasswordStrength(''), { level: 'weak', label: 'Weak', score: 1, outOf: 5 });
+  assert.equal(Core.estimatePasswordStrength('password').score, 1);
+  assert.equal(Core.estimatePasswordStrength('aaaaaaaaaaaaaaaa').score, 1, 'repeats count half');
+  assert.equal(Core.estimatePasswordStrength('Tr0ub4dor&3').score, 3);
+  assert.equal(Core.estimatePasswordStrength('correct-horse-battery-staple-Z9').score, 5);
+  assert.equal(Core.estimatePasswordStrength('correct-horse-battery-staple-Z9', { breached: true }).score, 1);
+});
+
+test('passwordCheckSummary keeps only found or not found and the strength score', () => {
+  const password = 'hunter2-Example!';
+  const summary = Core.passwordCheckSummary(password, 12345);
+  assert.deepEqual(summary, { found: true, strength: { label: 'Weak', score: 1, outOf: 5 } });
+  assert.deepEqual(Object.keys(summary).sort(), ['found', 'strength']);
+  const clean = Core.passwordCheckSummary(password, 0);
+  assert.equal(clean.found, false);
+  assert.equal(clean.strength.score, 5);
+  assert.ok(!JSON.stringify(summary).includes(password));
+  assert.ok(!JSON.stringify(summary).includes('12345'));
+});
+
+test('buildTextReport password section shows breach status and strength only', async () => {
+  const password = 'hunter2-Example!';
+  const fullHash = await Core.sha1Hex(password);
+  const breached = Core.buildTextReport({ breach: { password: Core.passwordCheckSummary(password, 52256179) } }, new Date(0));
+  assert.match(breached, /--- Password Check ---\nBreached: yes, found in known breaches\nStrength: Weak \(1 of 5\)/);
+
+  const clean = Core.buildTextReport({ breach: { password: Core.passwordCheckSummary(password, 0) } }, new Date(0));
+  assert.match(clean, /Breached: no, not found in known breaches\nStrength: Very Strong \(5 of 5\)/);
+
+  for (const report of [breached, clean]) {
+    assert.ok(!report.includes(password), 'password must not appear');
+    assert.ok(!report.toUpperCase().includes(fullHash), 'full hash must not appear');
+    assert.ok(!report.toUpperCase().includes(fullHash.slice(0, 5)), 'hash prefix must not appear');
+    assert.ok(!/52,?256,?179/.test(report), 'breach count must not appear');
+  }
+});
+
+test('buildTextReport ignores anything but the safe password fields, even if state is polluted', async () => {
+  const password = 'hunter2-Example!';
+  const fullHash = await Core.sha1Hex(password);
+  const report = Core.buildTextReport({
+    breach: { password: { found: false, strength: { label: password, score: 2 }, password, hash: fullHash, count: 9876 } },
+  }, new Date(0));
+  assert.match(report, /Breached: no, not found in known breaches\nStrength: Fair \(2 of 5\)/);
+  assert.ok(!report.includes(password));
+  assert.ok(!report.includes(fullHash));
+  assert.ok(!report.includes('9876'));
+  // A bad score is dropped rather than printed.
+  const bad = Core.buildTextReport({ breach: { password: { found: true, strength: { score: 'x' } } } }, new Date(0));
+  assert.ok(!/Strength:/.test(bad));
+  assert.match(bad, /Breached: yes/);
+  // Old-shape state without a found flag adds nothing.
+  assert.ok(!/Password Check/.test(Core.buildTextReport({ breach: { password: { count: 3 } } }, new Date(0))));
 });
 
 // ------------------------------------------------------------

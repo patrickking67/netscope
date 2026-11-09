@@ -599,6 +599,40 @@
     return { level: 'very-strong', label: 'Very Strong', percent: 100 };
   }
 
+  const STRENGTH_SCORES = { weak: 1, fair: 2, good: 3, strong: 4, 'very-strong': 5 };
+  const STRENGTH_LABELS = { 1: 'Weak', 2: 'Fair', 3: 'Good', 4: 'Strong', 5: 'Very Strong' };
+
+  /**
+   * Rough strength estimate for a password someone typed, from its character
+   * classes and length. Repeated characters count half. A password found in a
+   * breach corpus is weak no matter how it looks. Returns the level, label and
+   * a score from 1 to 5; it never returns or keeps the password itself.
+   */
+  function estimatePasswordStrength(password, options = {}) {
+    const text = String(password || '');
+    const chars = [...text];
+    let pool = 0;
+    if (/[a-z]/.test(text)) pool += 26;
+    if (/[A-Z]/.test(text)) pool += 26;
+    if (/[0-9]/.test(text)) pool += 10;
+    if (/[^a-zA-Z0-9]/.test(text)) pool += 33;
+    const unique = new Set(chars).size;
+    const effectiveLength = unique + (chars.length - unique) * 0.5;
+    const bits = pool > 0 ? effectiveLength * Math.log2(pool) : 0;
+    const strength = options.breached ? strengthFromEntropy(0) : strengthFromEntropy(bits);
+    return { level: strength.level, label: strength.label, score: STRENGTH_SCORES[strength.level], outOf: 5 };
+  }
+
+  /**
+   * The only password check data the app keeps: whether it was found in a
+   * breach and its strength score. No password, hash, prefix or breach count.
+   */
+  function passwordCheckSummary(password, breachCount) {
+    const found = Number(breachCount) > 0;
+    const { label, score, outOf } = estimatePasswordStrength(password, { breached: found });
+    return { found, strength: { label, score, outOf } };
+  }
+
   // ============================================================
   // SPEED TEST MATH
   // ============================================================
@@ -889,7 +923,7 @@
     return Number.isFinite(value) ? value.toFixed(digits) : 'n/a';
   }
 
-  /** Plain-text export of the current results. Passwords are never part of state or the report. */
+  /** Plain-text export of the current results. Passwords and hashes are never part of state or the report. */
   function buildTextReport(state, generatedAt = new Date()) {
     const lines = ['=== NetScope Results ===', `Generated: ${generatedAt.toLocaleString()}`, ''];
     if (state && state.ip) {
@@ -911,13 +945,23 @@
         `Upload: ${fixed(s.upload, 1)} Mbps`,
         '');
     }
-    // Only the email result is exported. Password checks stay out of the report entirely.
     const e = state && state.breach && state.breach.email;
     if (e) {
       lines.push('--- Breach Check ---');
       if (e.status === 'found') lines.push(`Email ${e.email}: found in ${e.count} breach${e.count === 1 ? '' : 'es'}`);
       else if (e.status === 'clean') lines.push(`Email ${e.email}: not found in known breaches`);
       else lines.push(`Email ${e.email}: check did not complete`);
+      lines.push('');
+    }
+    // Password check: only found or not found and the strength score. Never the
+    // password, its hash or the breach count (a count can identify a common password).
+    const p = state && state.breach && state.breach.password;
+    if (p && typeof p.found === 'boolean') {
+      lines.push('--- Password Check ---');
+      lines.push(p.found ? 'Breached: yes, found in known breaches' : 'Breached: no, not found in known breaches');
+      // The label comes from the score, so nothing but a number from state reaches the report.
+      const score = p.strength && p.strength.score;
+      if (Number.isInteger(score) && score >= 1 && score <= 5) lines.push(`Strength: ${STRENGTH_LABELS[score]} (${score} of 5)`);
       lines.push('');
     }
     if (state && state.scan) {
@@ -941,6 +985,7 @@
     summarizeChecks, scanDomain, fetchWithTimeout, isIpAddress,
     isIPv4, isIPv6, isPrivateIPv4, parseIceCandidate, classifyIceCandidates, evaluateWebRtc,
     CHARSETS, secureRandomInt, generateFromPool, generatePassphrase, strengthFromEntropy,
+    estimatePasswordStrength, passwordCheckSummary,
     summarizeLatency, throughputMbps, gaugeDashOffset, GAUGE_CIRCUMFERENCE,
     speedAbortReason, abortKind, createDeadline, raceAbort, measureLatency, runTransferPhase, summarizeSpeedRun,
     parseIpapiCo, parseIpwhois, parseFreeipapi, countryFlag,

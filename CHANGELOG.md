@@ -7,7 +7,8 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 ### Added
 - DNS & Security scan checks MTA-STS, SMTP TLS reporting (TLS-RPT) and BIMI, probes 18 common DKIM selectors in parallel and lists every one it finds.
 - One overall verdict for a scan (looks good, needs attention, at risk) with counts, and a plain-language explanation under each check.
-- The text, email and PDF export includes the scan verdict and the email breach result. Password checks are still never exported.
+- The text, email and PDF export includes the scan verdict and the email breach result.
+- The export includes a password check section with only breach found or not and an estimated strength score. The password, its hash and the breach count are never exported. The password result also shows the strength score.
 - Skip links, a `<main>` landmark on every page, ARIA tabs with arrow-key navigation, live result regions and names for icon-only controls.
 - `npm run check` runs the static site check (including a text lint) and the unit tests in one command.
 - `.claude/launch.json` for the local preview on port 4102, `llms.txt`, CONTRIBUTING.md, this changelog, editor and git attribute files, CODEOWNERS, Dependabot, and issue and pull request templates.
