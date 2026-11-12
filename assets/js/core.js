@@ -217,17 +217,17 @@
     const records = (values || []).filter((v) => /^v=spf1(\s|$)/i.test(String(v).trim()));
     const name = 'SPF Record';
     if (records.length === 0) {
-      return { icon: 'fail', name, detail: 'No SPF record found. Receivers cannot check who may send mail for this domain' };
+      return { icon: 'fail', name, detail: 'No SPF record found. Receivers cannot check who may send mail for this domain', fix: 'Publish one TXT record at the domain root that lists your mail providers and ends in -all, for example: v=spf1 include:_spf.example.net -all' };
     }
     if (records.length > 1) {
-      return { icon: 'fail', name, detail: 'Multiple SPF records found. Receivers treat this as a permanent error (RFC 7208)', value: records.join(' | ') };
+      return { icon: 'fail', name, detail: 'Multiple SPF records found. Receivers treat this as a permanent error (RFC 7208)', fix: 'Merge every sender into a single v=spf1 TXT record and delete the others', value: records.join(' | ') };
     }
     const record = records[0].trim();
     if (/(?:^|\s)\+?all(?:\s|$)/i.test(record)) {
-      return { icon: 'fail', name, detail: 'SPF ends in +all, which authorizes any sender', value: record };
+      return { icon: 'fail', name, detail: 'SPF ends in +all, which authorizes any sender', fix: 'Replace +all with -all (reject) or ~all (soft fail) once every real sender is listed', value: record };
     }
     if (/(?:^|\s)\?all(?:\s|$)/i.test(record)) {
-      return { icon: 'warn', name, detail: 'SPF ends in ?all (neutral), which gives receivers no guidance', value: record };
+      return { icon: 'warn', name, detail: 'SPF ends in ?all (neutral), which gives receivers no guidance', fix: 'Change ?all to ~all, then to -all once you are sure every real sender is listed', value: record };
     }
     return { icon: 'pass', name, detail: 'Sender Policy Framework is configured', value: record };
   }
@@ -248,10 +248,10 @@
     const records = (values || []).filter((v) => /^v=DMARC1\s*(;|$)/i.test(String(v).trim()));
     const name = 'DMARC Policy';
     if (records.length === 0) {
-      return { icon: 'fail', name, detail: 'No DMARC record found. The domain is easier to spoof' };
+      return { icon: 'fail', name, detail: 'No DMARC record found. The domain is easier to spoof', fix: 'Publish a TXT record at _dmarc.<domain>. Start with v=DMARC1; p=none; rua=mailto:<your report address>, read the reports, then move to p=quarantine and p=reject' };
     }
     if (records.length > 1) {
-      return { icon: 'fail', name, detail: 'Multiple DMARC records found. Receivers ignore DMARC in this case (RFC 7489)', value: records.join(' | ') };
+      return { icon: 'fail', name, detail: 'Multiple DMARC records found. Receivers ignore DMARC in this case (RFC 7489)', fix: 'Keep exactly one v=DMARC1 TXT record at _dmarc.<domain> and delete the others', value: records.join(' | ') };
     }
     const record = records[0].trim();
     const tags = parseDmarcTags(record);
@@ -259,14 +259,14 @@
     if (policy === 'reject' || policy === 'quarantine') {
       const pct = tags.pct === undefined ? 100 : Number(tags.pct);
       if (Number.isFinite(pct) && pct >= 0 && pct < 100) {
-        return { icon: 'warn', name, detail: `Policy: ${policy}, but only applied to ${pct}% of failing mail`, value: record };
+        return { icon: 'warn', name, detail: `Policy: ${policy}, but only applied to ${pct}% of failing mail`, fix: 'Raise pct to 100, or remove the pct tag, once the reports show legitimate mail is passing', value: record };
       }
       return { icon: 'pass', name, detail: `Policy: ${policy}`, value: record };
     }
     if (policy === 'none') {
-      return { icon: 'warn', name, detail: 'Policy: none (monitoring only, not enforcing)', value: record };
+      return { icon: 'warn', name, detail: 'Policy: none (monitoring only, not enforcing)', fix: 'After the aggregate reports show your real mail passes SPF or DKIM, change p=none to p=quarantine, then p=reject', value: record };
     }
-    return { icon: 'warn', name, detail: 'DMARC record has no valid p= policy tag', value: record };
+    return { icon: 'warn', name, detail: 'DMARC record has no valid p= policy tag', fix: 'Add a p= tag right after v=DMARC1. Valid values are none, quarantine and reject', value: record };
   }
 
   /** True if any TXT value looks like a published (non-revoked) DKIM key. */
@@ -280,6 +280,7 @@
       icon: validated ? 'pass' : 'warn',
       name: 'DNSSEC',
       detail: validated ? 'DNSSEC signatures are validated for this domain' : 'DNSSEC is not enabled or not validated',
+      ...(validated ? {} : { fix: 'Turn on DNSSEC signing at your DNS host, then add the DS record it gives you at your domain registrar' }),
     };
   }
 
@@ -291,14 +292,14 @@
     const records = (values || []).filter((v) => /^v=STSv1\s*(;|$)/i.test(String(v).trim()));
     const name = 'MTA-STS';
     if (records.length === 0) {
-      return { icon: 'info', name, detail: 'No MTA-STS policy. Optional: it makes other mail servers require TLS when sending to this domain' };
+      return { icon: 'info', name, detail: 'No MTA-STS policy. Optional: it makes other mail servers require TLS when sending to this domain', fix: 'Optional. Host a policy file at https://mta-sts.<domain>/.well-known/mta-sts.txt and publish v=STSv1; id=<version> at _mta-sts.<domain>' };
     }
     if (records.length > 1) {
-      return { icon: 'warn', name, detail: 'Multiple MTA-STS records found. Senders ignore the policy in this case (RFC 8461)', value: records.join(' | ') };
+      return { icon: 'warn', name, detail: 'Multiple MTA-STS records found. Senders ignore the policy in this case (RFC 8461)', fix: 'Keep exactly one v=STSv1 TXT record at _mta-sts.<domain>', value: records.join(' | ') };
     }
     const id = parseDmarcTags(records[0]).id || '';
     if (!/^[A-Za-z0-9]{1,32}$/.test(id)) {
-      return { icon: 'warn', name, detail: 'MTA-STS record is missing a valid id= tag', value: records[0].trim() };
+      return { icon: 'warn', name, detail: 'MTA-STS record is missing a valid id= tag', fix: 'Set id= to a short letters-and-digits value, and change it every time the policy file changes', value: records[0].trim() };
     }
     return { icon: 'pass', name, detail: 'MTA-STS is announced. Senders should fetch the policy over HTTPS', value: records[0].trim() };
   }
@@ -308,11 +309,11 @@
     const records = (values || []).filter((v) => /^v=TLSRPTv1\s*(;|$)/i.test(String(v).trim()));
     const name = 'TLS Reporting';
     if (records.length === 0) {
-      return { icon: 'info', name, detail: 'No TLS-RPT record. Optional: it asks senders to report TLS delivery failures' };
+      return { icon: 'info', name, detail: 'No TLS-RPT record. Optional: it asks senders to report TLS delivery failures', fix: 'Optional. Publish v=TLSRPTv1; rua=mailto:<your report address> at _smtp._tls.<domain>' };
     }
     const rua = parseDmarcTags(records[0]).rua || '';
     if (!/^(mailto:|https:)/i.test(rua)) {
-      return { icon: 'warn', name, detail: 'TLS-RPT record has no valid rua= reporting address', value: records[0].trim() };
+      return { icon: 'warn', name, detail: 'TLS-RPT record has no valid rua= reporting address', fix: 'Set rua= to a mailto: or https: address that can receive the reports', value: records[0].trim() };
     }
     return { icon: 'pass', name, detail: 'TLS failure reports are requested', value: records[0].trim() };
   }
@@ -327,10 +328,10 @@
     const tags = parseDmarcTags(records[0]);
     const logo = tags.l || '';
     if (logo && !/^https:\/\//i.test(logo)) {
-      return { icon: 'warn', name, detail: 'BIMI logo (l=) must be an HTTPS URL', value: records[0].trim() };
+      return { icon: 'warn', name, detail: 'BIMI logo (l=) must be an HTTPS URL', fix: 'Host the SVG logo on HTTPS and point l= at that URL', value: records[0].trim() };
     }
     if (dmarcCheck && dmarcCheck.icon !== 'pass') {
-      return { icon: 'warn', name, detail: 'BIMI is published but inboxes ignore it until DMARC is enforced (quarantine or reject at 100%)', value: records[0].trim() };
+      return { icon: 'warn', name, detail: 'BIMI is published but inboxes ignore it until DMARC is enforced (quarantine or reject at 100%)', fix: 'Enforce DMARC first (p=quarantine or p=reject with pct at 100). BIMI starts working after that', value: records[0].trim() };
     }
     const vmc = tags.a ? ' with a certificate (a=)' : ' without a certificate, which some inboxes require';
     return { icon: 'pass', name, detail: `BIMI is published${vmc}`, value: records[0].trim() };
@@ -344,7 +345,7 @@
     if (found.length > 0) {
       return { icon: 'pass', name: 'DKIM', detail: `DKIM key${found.length > 1 ? 's' : ''} found at selector${found.length > 1 ? 's' : ''}: ${found.join(', ')}` };
     }
-    return { icon: 'info', name: 'DKIM', detail: `No DKIM key at ${probedCount} common selectors. The domain may still sign mail with a custom selector` };
+    return { icon: 'info', name: 'DKIM', detail: `No DKIM key at ${probedCount} common selectors. The domain may still sign mail with a custom selector`, fix: 'If you send mail, turn on DKIM signing with your mail provider and publish the key it gives you at <selector>._domainkey.<domain>' };
   }
 
   /** DNS response codes worth naming to a person. */
@@ -371,6 +372,53 @@
     else if (counts.warn > 0) verdict = 'needs-attention';
     const labels = { good: 'Looks good', 'needs-attention': 'Needs attention', 'at-risk': 'At risk' };
     return { ...counts, verdict, label: labels[verdict] };
+  }
+
+  /**
+   * Points taken off a domain's score of 100 for each result. SPF and DMARC
+   * carry the most weight because they decide whether the domain can be spoofed.
+   * Optional controls (MTA-STS, TLS-RPT, BIMI, an undiscovered DKIM selector)
+   * report as info and cost nothing. Checks that are not about the domain
+   * (the browser checks) are not in this table and are ignored.
+   */
+  const GRADE_DEDUCTIONS = {
+    'SPF Record': { fail: 30, warn: 15 },
+    'DMARC Policy': { fail: 35, warn: 15 },
+    DNSSEC: { fail: 10, warn: 10 },
+    DKIM: { fail: 10, warn: 5 },
+    'MTA-STS': { fail: 5, warn: 5 },
+    'TLS Reporting': { fail: 5, warn: 5 },
+    BIMI: { fail: 5, warn: 5 },
+    'Mail Servers': { fail: 0, warn: 0 },
+  };
+  const GRADE_BANDS = [
+    { min: 90, grade: 'A', summary: 'Spoofing protections are in place and enforced.' },
+    { min: 80, grade: 'B', summary: 'The basics are in place. One gap is worth closing.' },
+    { min: 70, grade: 'C', summary: 'Partly protected. Some controls are published but not enforced.' },
+    { min: 60, grade: 'D', summary: 'Weak protection. Mail from this domain is easy to forge.' },
+    { min: 0, grade: 'F', summary: 'Little or no protection. Anyone can send mail that claims to be from this domain.' },
+  ];
+
+  /**
+   * One letter grade for a domain's checks. Returns
+   * { grade, score, summary, deductions: [{ name, points }], incomplete }.
+   * A check that could not be looked up (unknown) costs nothing and marks the
+   * grade incomplete, so a network failure is never graded as a bad setup.
+   */
+  function gradeChecks(checks) {
+    let score = 100;
+    let incomplete = false;
+    const deductions = [];
+    for (const c of checks || []) {
+      const table = c && GRADE_DEDUCTIONS[c.name];
+      if (!table) continue;
+      if (c.unknown) { incomplete = true; continue; }
+      const points = table[c.icon] || 0;
+      if (points > 0) { score -= points; deductions.push({ name: c.name, points }); }
+    }
+    score = Math.max(0, score);
+    const band = GRADE_BANDS.find((b) => score >= b.min);
+    return { grade: band.grade, score, summary: band.summary, deductions, incomplete };
   }
 
   /**
@@ -405,9 +453,9 @@
     }
 
     const graded = (lookup, evaluate, name, label) => {
-      if (!lookup.ok) return { icon: 'warn', name, detail: `Could not look up ${label}. Try again` };
+      if (!lookup.ok) return { icon: 'warn', name, unknown: true, detail: `Could not look up ${label}. Try again` };
       const status = Number(lookup.value && lookup.value.Status);
-      if (status && status !== 3) return { icon: 'warn', name, detail: `${label} lookup returned ${DNS_RCODES[status] || 'error ' + status}` };
+      if (status && status !== 3) return { icon: 'warn', name, unknown: true, detail: `${label} lookup returned ${DNS_RCODES[status] || 'error ' + status}` };
       return evaluate(txtValues(lookup.value));
     };
 
@@ -417,14 +465,14 @@
     checks.push(dmarcCheck);
     const found = DKIM_SELECTORS.filter((sel, i) => dkim[i].ok && hasDkimKey(txtValues(dkim[i].value)));
     checks.push(evaluateDkim(found));
-    checks.push(dnssec.ok ? evaluateDnssec(dnssec.value) : { icon: 'warn', name: 'DNSSEC', detail: 'Could not verify DNSSEC' });
+    checks.push(dnssec.ok ? evaluateDnssec(dnssec.value) : { icon: 'warn', name: 'DNSSEC', unknown: true, detail: 'Could not verify DNSSEC' });
     if (mx.ok) {
       const answers = ((mx.value && mx.value.Answer) || []).filter((r) => Number(r.type) === 15);
       const nullMx = answers.length === 1 && /^\s*0\s+\.?\s*$/.test(String(answers[0].data));
       if (nullMx) checks.push({ icon: 'info', name: 'Mail Servers', detail: 'Null MX (RFC 7505): this domain states it does not accept email' });
       else checks.push(answers.length > 0
         ? { icon: 'info', name: 'Mail Servers', detail: `${answers.length} MX record(s) found`, value: answers.map((r) => r.data).join(', ') }
-        : { icon: 'warn', name: 'Mail Servers', detail: 'No MX records found. The domain may not receive email' });
+        : { icon: 'warn', name: 'Mail Servers', detail: 'No MX records found. The domain may not receive email', fix: 'If the domain should receive mail, add MX records from your mail provider. If it should not, publish a null MX (0 .) so senders fail fast' });
     }
     checks.push(graded(mtaSts, evaluateMtaSts, 'MTA-STS', 'MTA-STS'));
     checks.push(graded(tlsRpt, evaluateTlsRpt, 'TLS Reporting', 'TLS-RPT'));
@@ -968,7 +1016,12 @@
       lines.push(`--- DNS & Security: ${state.scan.domain} ---`);
       const sum = summarizeChecks(state.scan.checks);
       lines.push(`Overall: ${sum.label} (${sum.pass} pass, ${sum.warn} warn, ${sum.fail} fail, ${sum.info} info)`);
-      for (const c of state.scan.checks) lines.push(`${STATUS_TAGS[c.icon] || '[?]'} ${c.name}: ${c.detail}`);
+      const grade = gradeChecks(state.scan.checks);
+      lines.push(`Grade: ${grade.grade} (${grade.score} of 100)${grade.incomplete ? ', incomplete: some checks could not be looked up' : ''}. ${grade.summary}`);
+      for (const c of state.scan.checks) {
+        lines.push(`${STATUS_TAGS[c.icon] || '[?]'} ${c.name}: ${c.detail}`);
+        if (c.fix && c.icon !== 'pass') lines.push(`       How to fix: ${c.fix}`);
+      }
       lines.push('');
     }
     lines.push('Generated by NetScope');
@@ -982,7 +1035,7 @@
     normalizeDomainInput, dnsTypeName, joinTxtData, txtValues,
     evaluateSpf, parseDmarcTags, evaluateDmarc, hasDkimKey, evaluateDnssec,
     evaluateMtaSts, evaluateTlsRpt, evaluateBimi, evaluateDkim, DKIM_SELECTORS,
-    summarizeChecks, scanDomain, fetchWithTimeout, isIpAddress,
+    summarizeChecks, gradeChecks, scanDomain, fetchWithTimeout, isIpAddress,
     isIPv4, isIPv6, isPrivateIPv4, parseIceCandidate, classifyIceCandidates, evaluateWebRtc,
     CHARSETS, secureRandomInt, generateFromPool, generatePassphrase, strengthFromEntropy,
     estimatePasswordStrength, passwordCheckSummary,

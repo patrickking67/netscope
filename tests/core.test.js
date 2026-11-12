@@ -905,3 +905,101 @@ test('scanDomain recognizes a null MX as a domain that does not accept mail', as
   const result = await Core.scanDomain('example.com', doh);
   assert.match(result.checks.find((c) => c.name === 'Mail Servers').detail, /does not accept email/);
 });
+
+// ------------------------------------------------------------
+// Domain grade and fix guidance
+// ------------------------------------------------------------
+test('gradeChecks maps the score to a letter and lists where points were lost', () => {
+  const perfect = Core.gradeChecks([{ icon: 'pass', name: 'SPF Record' }, { icon: 'pass', name: 'DMARC Policy' }, { icon: 'info', name: 'MTA-STS' }]);
+  assert.deepEqual({ grade: perfect.grade, score: perfect.score, incomplete: perfect.incomplete }, { grade: 'A', score: 100, incomplete: false });
+  assert.deepEqual(perfect.deductions, []);
+
+  const monitoring = Core.gradeChecks([{ icon: 'pass', name: 'SPF Record' }, { icon: 'warn', name: 'DMARC Policy' }]);
+  assert.equal(monitoring.score, 85);
+  assert.equal(monitoring.grade, 'B');
+  assert.deepEqual(monitoring.deductions, [{ name: 'DMARC Policy', points: 15 }]);
+
+  assert.equal(Core.gradeChecks([{ icon: 'warn', name: 'DMARC Policy' }, { icon: 'warn', name: 'DNSSEC' }]).grade, 'C');
+  assert.equal(Core.gradeChecks([{ icon: 'fail', name: 'SPF Record' }, { icon: 'warn', name: 'DNSSEC' }]).grade, 'D');
+  const open = Core.gradeChecks([{ icon: 'fail', name: 'SPF Record' }, { icon: 'fail', name: 'DMARC Policy' }, { icon: 'warn', name: 'DNSSEC' }]);
+  assert.equal(open.grade, 'F');
+  assert.equal(open.score, 25);
+  assert.ok(open.summary.length > 0);
+});
+
+test('gradeChecks never goes below zero and handles an empty list', () => {
+  const all = ['SPF Record', 'DMARC Policy', 'DNSSEC', 'DKIM', 'MTA-STS', 'TLS Reporting', 'BIMI'].map((name) => ({ icon: 'fail', name }));
+  assert.equal(Core.gradeChecks([...all, ...all]).score, 0);
+  assert.equal(Core.gradeChecks([]).grade, 'A');
+  assert.equal(Core.gradeChecks(null).score, 100);
+});
+
+test('gradeChecks ignores browser checks and does not punish a lookup that failed', () => {
+  const graded = Core.gradeChecks([
+    { icon: 'pass', name: 'SPF Record' },
+    { icon: 'warn', name: 'DMARC Policy', unknown: true },
+    { icon: 'warn', name: 'WebRTC Leak' },
+    { icon: 'fail', name: 'Your Connection' },
+  ]);
+  assert.equal(graded.score, 100);
+  assert.equal(graded.incomplete, true);
+});
+
+test('every problem an evaluator reports comes with a way to fix it', () => {
+  const problems = [
+    Core.evaluateSpf([]),
+    Core.evaluateSpf(['v=spf1 -all', 'v=spf1 mx -all']),
+    Core.evaluateSpf(['v=spf1 +all']),
+    Core.evaluateSpf(['v=spf1 mx ?all']),
+    Core.evaluateDmarc([]),
+    Core.evaluateDmarc(['v=DMARC1; p=reject', 'v=DMARC1; p=none']),
+    Core.evaluateDmarc(['v=DMARC1; p=quarantine; pct=20']),
+    Core.evaluateDmarc(['v=DMARC1; p=none']),
+    Core.evaluateDmarc(['v=DMARC1; rua=mailto:d@example.com']),
+    Core.evaluateDnssec({ AD: false }),
+    Core.evaluateMtaSts([]),
+    Core.evaluateMtaSts(['v=STSv1; id=1', 'v=STSv1; id=2']),
+    Core.evaluateMtaSts(['v=STSv1; id=!!']),
+    Core.evaluateTlsRpt([]),
+    Core.evaluateTlsRpt(['v=TLSRPTv1; rua=nobody']),
+    Core.evaluateBimi(['v=BIMI1; l=http://example.com/l.svg']),
+    Core.evaluateBimi(['v=BIMI1; l=https://example.com/l.svg'], { icon: 'warn' }),
+    Core.evaluateDkim([]),
+  ];
+  for (const check of problems) {
+    assert.notEqual(check.icon, 'pass', check.detail);
+    assert.ok(typeof check.fix === 'string' && check.fix.length > 20, `${check.name}: ${check.detail} has no fix`);
+    assert.ok(!/[.]$/.test(check.fix), 'fix text has no trailing period, like detail text');
+  }
+  for (const check of [Core.evaluateSpf(['v=spf1 mx -all']), Core.evaluateDmarc(['v=DMARC1; p=reject']), Core.evaluateDnssec({ AD: true })]) {
+    assert.equal(check.icon, 'pass');
+    assert.equal(check.fix, undefined);
+  }
+});
+
+test('scanDomain marks failed lookups unknown so the grade is incomplete, not worse', async () => {
+  const { doh } = fakeDoh({ ad: true, 'example.com A': ['203.0.113.10'], 'example.com TXT': ['"v=spf1 -all"'] }, { fail: ['_dmarc.example.com TXT'] });
+  const result = await Core.scanDomain('example.com', doh);
+  assert.equal(result.checks.find((c) => c.name === 'DMARC Policy').unknown, true);
+  const grade = Core.gradeChecks(result.checks);
+  assert.equal(grade.incomplete, true);
+  assert.equal(grade.score, 100);
+});
+
+test('scanDomain gives an unprotected domain an F with fixes for SPF and DMARC', async () => {
+  const { doh } = fakeDoh({ 'example.com A': ['203.0.113.10'] });
+  const result = await Core.scanDomain('example.com', doh);
+  const grade = Core.gradeChecks(result.checks);
+  assert.equal(grade.grade, 'F');
+  assert.match(result.checks.find((c) => c.name === 'SPF Record').fix, /v=spf1/);
+  assert.match(result.checks.find((c) => c.name === 'DMARC Policy').fix, /_dmarc/);
+});
+
+test('buildTextReport includes the grade and how to fix each problem', () => {
+  const report = Core.buildTextReport({
+    scan: { domain: 'example.com', checks: [Core.evaluateSpf([]), Core.evaluateDmarc(['v=DMARC1; p=reject']), { icon: 'pass', name: 'Your Connection', detail: 'HTTPS' }] },
+  }, new Date(0));
+  assert.match(report, /Grade: C \(70 of 100\)\. Partly protected/);
+  assert.match(report, /\[FAIL\] SPF Record: No SPF record found[^\n]*\n {7}How to fix: Publish one TXT record/);
+  assert.equal(report.match(/How to fix:/g).length, 1);
+});

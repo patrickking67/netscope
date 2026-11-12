@@ -5,6 +5,7 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 ## [Unreleased]
 
 ### Added
+- The domain scan gives a letter grade (A to F) with a score out of 100, says where points were lost, and adds a "How to fix" line under every problem. The grade and fixes are in the exported report. A lookup that fails marks the grade incomplete instead of lowering it.
 - DNS & Security scan checks MTA-STS, SMTP TLS reporting (TLS-RPT) and BIMI, probes 18 common DKIM selectors in parallel and lists every one it finds.
 - One overall verdict for a scan (looks good, needs attention, at risk) with counts, and a plain-language explanation under each check.
 - The text, email and PDF export includes the scan verdict and the email breach result.

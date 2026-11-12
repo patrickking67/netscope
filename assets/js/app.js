@@ -661,6 +661,7 @@ function renderCheck(c) {
         <div class="check-detail">${esc(c.detail)}</div>
         ${c.value ? `<div class="check-value">${esc(c.value)}</div>` : ''}
         ${c.explain ? `<div class="check-explain">${esc(c.explain)}</div>` : ''}
+        ${c.fix && c.icon !== 'pass' ? `<div class="check-fix"><strong>How to fix:</strong> ${esc(c.fix)}</div>` : ''}
       </div>
     </div>`;
 }
@@ -704,9 +705,15 @@ async function runDNSScan() {
     state.scan = { domain, checks };
 
     const summary = Core.summarizeChecks(result.checks);
+    const grade = Core.gradeChecks(result.checks);
+    const lost = grade.deductions.map(d => `${d.name} (${d.points})`).join(', ');
     let html = `<div class="scan-summary scan-summary--${summary.verdict}">
-      <div class="scan-summary-title">${esc(domain)}: ${esc(summary.label)}</div>
-      <div class="scan-summary-counts">${summary.pass} passed, ${summary.warn} warnings, ${summary.fail} failed, ${summary.info} informational</div>
+      <div class="scan-grade scan-grade--${grade.grade.toLowerCase()}" role="img" aria-label="Grade ${grade.grade}">${grade.grade}</div>
+      <div class="scan-summary-body">
+        <div class="scan-summary-title">${esc(domain)}: ${esc(summary.label)}</div>
+        <div class="scan-summary-text">${esc(grade.summary)}</div>
+        <div class="scan-summary-counts">Score ${grade.score} of 100. ${summary.pass} passed, ${summary.warn} warnings, ${summary.fail} failed, ${summary.info} informational.${lost ? ` Points lost: ${esc(lost)}.` : ''}${grade.incomplete ? ' Some checks could not be looked up, so the grade may be incomplete.' : ''}</div>
+      </div>
     </div>`;
 
     html += '<div class="scan-section"><h3 class="scan-section-title">DNS Records</h3>';
