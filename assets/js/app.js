@@ -8,6 +8,8 @@ const state = {
   speed: { ping: null, jitter: null, download: null, upload: null },
   breach: { email: null, password: null },
   scan: null,
+  subnet: null,
+  jwt: null,
 };
 
 // ============================================================
@@ -22,6 +24,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initPasswordToggle();
   initEventListeners();
   initPasswordGenerator();
+  initLocalTools();
   initFullScan();
   initSettings();
 
@@ -661,7 +664,7 @@ function renderCheck(c) {
         <div class="check-detail">${esc(c.detail)}</div>
         ${c.value ? `<div class="check-value">${esc(c.value)}</div>` : ''}
         ${c.explain ? `<div class="check-explain">${esc(c.explain)}</div>` : ''}
-        ${c.fix && c.icon !== 'pass' ? `<div class="check-fix"><strong>How to fix:</strong> ${esc(c.fix)}</div>` : ''}
+        ${c.fix && c.icon !== 'pass' ? `<div class="check-fix"><strong>${c.icon === 'info' ? 'To set it up' : 'How to fix'}:</strong> ${esc(c.fix)}</div>` : ''}
       </div>
     </div>`;
 }
@@ -768,6 +771,106 @@ function collectIceCandidates() {
       setTimeout(finish, 3000);
     } catch { resolve(candidates); }
   });
+}
+
+// ============================================================
+// LOCAL TOOLS: subnet calculator and JWT inspector.
+// Both run entirely in the page. Neither makes a network request.
+// ============================================================
+const SUBNET_EMPTY = 'Enter an address and prefix to see its subnet.';
+const JWT_EMPTY = 'Paste a token and press Decode, or press Ctrl or Command with Enter.';
+
+function initLocalTools() {
+  document.getElementById('btn-subnet').addEventListener('click', runSubnetCalc);
+  document.getElementById('subnet-input').addEventListener('keydown', e => { if (e.key === 'Enter') runSubnetCalc(); });
+  document.getElementById('btn-jwt').addEventListener('click', runJwtInspect);
+  document.getElementById('btn-jwt-sample').addEventListener('click', loadSampleJwt);
+  document.getElementById('btn-jwt-clear').addEventListener('click', clearJwt);
+  document.getElementById('jwt-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runJwtInspect(); }
+  });
+}
+
+function rowsHtml(rows) {
+  return `<dl class="kv-grid">${rows.map(r => `<div class="kv-item"><dt>${esc(r.label)}</dt><dd>${esc(r.value)}</dd></div>`).join('')}</dl>`;
+}
+
+function runSubnetCalc() {
+  const resultsEl = document.getElementById('subnet-results');
+  const raw = document.getElementById('subnet-input').value;
+  if (!raw.trim()) {
+    state.subnet = null;
+    resultsEl.innerHTML = statusHtml(SUBNET_EMPTY, 'empty');
+    return;
+  }
+  const result = Core.calculateSubnet(raw);
+  if (!result.ok) {
+    state.subnet = null;
+    resultsEl.innerHTML = statusHtml(`${result.error}.`, 'error');
+    return;
+  }
+  state.subnet = result;
+  resultsEl.innerHTML = `<div class="scan-summary scan-summary--good">
+      <div class="scan-summary-body">
+        <div class="scan-summary-title">${esc(result.cidr)}</div>
+        <div class="scan-summary-counts">IPv${result.version} subnet containing ${esc(result.address)}</div>
+      </div>
+    </div>
+    ${rowsHtml(result.rows)}
+    ${result.note ? statusHtml(result.note, 'empty') : ''}`;
+}
+
+const JWT_STATUS_VERDICT = { active: 'good', expired: 'needs-attention', 'not-yet-valid': 'needs-attention', 'no-expiry': 'needs-attention' };
+
+function runJwtInspect() {
+  const resultsEl = document.getElementById('jwt-results');
+  const raw = document.getElementById('jwt-input').value;
+  if (!raw.trim()) {
+    state.jwt = null;
+    resultsEl.innerHTML = statusHtml(JWT_EMPTY, 'empty');
+    return;
+  }
+  const result = Core.inspectJwt(raw);
+  if (!result.ok) {
+    state.jwt = null;
+    resultsEl.innerHTML = statusHtml(`${result.error}.`, 'error');
+    return;
+  }
+  // The report keeps the algorithm, status and finding names. The token and its claims stay on screen only.
+  state.jwt = Core.jwtReportSummary(result);
+  const failed = result.findings.some(f => f.icon === 'fail');
+  const verdict = failed ? 'at-risk' : JWT_STATUS_VERDICT[result.status];
+  const json = value => esc(JSON.stringify(value, null, 2));
+  resultsEl.innerHTML = `<div class="scan-summary scan-summary--${verdict}">
+      <div class="scan-summary-body">
+        <div class="scan-summary-title">${esc(Core.JWT_STATUS_LABELS[result.status])}${failed ? ', and it should be rejected' : ''}</div>
+        <div class="scan-summary-counts">Algorithm ${esc(result.algorithm)}. ${result.claims.length} claim${result.claims.length === 1 ? '' : 's'}. Signature not verified.</div>
+      </div>
+    </div>
+    <div class="scan-section"><h3 class="scan-section-title">Findings</h3>${result.findings.map(renderCheck).join('')}</div>
+    <div class="scan-section"><h3 class="scan-section-title">Claims</h3>
+      ${result.claims.length ? rowsHtml(result.claims.map(c => ({ label: c.label === c.key ? c.key : `${c.label} (${c.key})`, value: c.value }))) : statusHtml('The payload has no claims.', 'empty')}
+    </div>
+    <div class="scan-section"><h3 class="scan-section-title">Header</h3><pre class="code-block" tabindex="0" aria-label="Decoded header">${json(result.header)}</pre></div>
+    <div class="scan-section"><h3 class="scan-section-title">Payload</h3><pre class="code-block" tabindex="0" aria-label="Decoded payload">${json(result.payload)}</pre></div>`;
+}
+
+/** A made-up token, built here so no token text sits in the source. The signature is filler. */
+function loadSampleJwt() {
+  const b64url = value => btoa(value).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  const now = Math.floor(Date.now() / 1000);
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const payload = { iss: 'issuer.example', sub: 'demo-user-42', aud: 'netscope-demo', scope: 'read:reports', iat: now - 600, exp: now + 3000 };
+  document.getElementById('jwt-input').value = `${b64url(JSON.stringify(header))}.${b64url(JSON.stringify(payload))}.${b64url('sample-signature-not-a-real-one')}`;
+  runJwtInspect();
+}
+
+function clearJwt() {
+  const input = document.getElementById('jwt-input');
+  input.value = '';
+  state.jwt = null;
+  document.getElementById('jwt-results').innerHTML = statusHtml(JWT_EMPTY, 'empty');
+  input.focus();
 }
 
 // ============================================================

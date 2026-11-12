@@ -530,6 +530,8 @@ input, select { font-family: inherit; color: inherit; }
 .btn--danger { background: var(--accent-red); color: #fff; }
 .btn--danger:hover { background: #dc2626; }
 .btn--danger:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn--ghost { border-color: var(--border-hover); color: var(--text-secondary); background: transparent; }
+.btn--ghost:hover { color: var(--text-primary); background: var(--bg-input); }
 .btn--full { width: 100%; justify-content: center; padding: 14px; }
 
 /* ===== Inputs ===== */
@@ -1430,6 +1432,21 @@ input, select { font-family: inherit; color: inherit; }
 .tool-status--warn { color: var(--accent-orange); border: 1px solid rgba(249,115,22,0.25); background: rgba(249,115,22,0.06); }
 .tool-status--error { color: var(--accent-red); border: 1px solid rgba(239,68,68,0.25); background: rgba(239,68,68,0.06); }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ===== Local tools (subnet calculator, JWT inspector) ===== */
+.input-field--mono { font-family: var(--font-mono); font-size: 13px; }
+.input-field--area { display: block; min-height: 112px; resize: vertical; line-height: 1.5; word-break: break-all; margin-bottom: 12px; }
+.tool-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+.kv-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; margin: 16px 0 0; }
+.kv-item { padding: 12px; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: var(--radius-xs); min-width: 0; }
+[data-theme="light"] .kv-item, [data-theme="light"] .code-block { background: rgba(0,0,0,0.02); }
+.kv-item dt { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; }
+.kv-item dd { margin: 0; font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); overflow-wrap: anywhere; }
+.code-block {
+  margin: 0; padding: 14px 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border);
+  border-radius: var(--radius-xs); font-family: var(--font-mono); font-size: 12px; line-height: 1.6;
+  color: var(--text-secondary); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 320px; overflow: auto;
+}
 
 /* ===== Scan summary ===== */
 .scan-summary { padding: 16px 18px; border-radius: var(--radius-sm); margin-top: 16px; border: 1px solid var(--border); }

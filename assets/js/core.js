@@ -963,6 +963,352 @@
   }
 
   // ============================================================
+  // SUBNET CALCULATOR (local only, nothing is sent anywhere)
+  // ============================================================
+  function ipv4ToInt(text) {
+    return String(text).split('.').reduce((acc, octet) => acc * 256 + Number(octet), 0);
+  }
+
+  function intToIpv4(value) {
+    return [value >>> 24, (value >>> 16) & 255, (value >>> 8) & 255, value & 255].join('.');
+  }
+
+  /** Prefix length for a contiguous dotted mask such as 255.255.252.0, or null. */
+  function maskToPrefix(mask) {
+    if (!isIPv4(mask)) return null;
+    const bits = ipv4ToInt(mask).toString(2).padStart(32, '0');
+    if (!/^1*0*$/.test(bits)) return null;
+    return bits.includes('0') ? bits.indexOf('0') : 32;
+  }
+
+  const IPV4_SCOPES = [
+    ['0.0.0.0', 8, 'This network (RFC 791)'],
+    ['10.0.0.0', 8, 'Private (RFC 1918)'],
+    ['100.64.0.0', 10, 'Carrier-grade NAT (RFC 6598)'],
+    ['127.0.0.0', 8, 'Loopback'],
+    ['169.254.0.0', 16, 'Link-local (RFC 3927)'],
+    ['172.16.0.0', 12, 'Private (RFC 1918)'],
+    ['192.0.2.0', 24, 'Documentation (RFC 5737)'],
+    ['192.168.0.0', 16, 'Private (RFC 1918)'],
+    ['198.18.0.0', 15, 'Benchmarking (RFC 2544)'],
+    ['198.51.100.0', 24, 'Documentation (RFC 5737)'],
+    ['203.0.113.0', 24, 'Documentation (RFC 5737)'],
+    ['224.0.0.0', 4, 'Multicast'],
+    ['240.0.0.0', 4, 'Reserved'],
+  ];
+
+  function ipv4Scope(value) {
+    for (const [base, prefix, label] of IPV4_SCOPES) {
+      const size = 2 ** (32 - prefix);
+      const start = ipv4ToInt(base);
+      if (value >= start && value < start + size) return label;
+    }
+    return 'Public';
+  }
+
+  /** Parse an IPv6 address into a BigInt, or null. Embedded IPv4 tails are accepted. */
+  function ipv6ToBigInt(text) {
+    let source = String(text).trim().toLowerCase();
+    if (!/^[0-9a-f:.]+$/.test(source) || source.length > 45) return null;
+    const lastColon = source.lastIndexOf(':');
+    const tail = source.slice(lastColon + 1);
+    if (tail.includes('.')) {
+      if (!isIPv4(tail)) return null;
+      const v4 = ipv4ToInt(tail);
+      source = `${source.slice(0, lastColon + 1)}${(v4 >>> 16).toString(16)}:${(v4 & 0xffff).toString(16)}`;
+    }
+    const halves = source.split('::');
+    if (halves.length > 2) return null;
+    const head = halves[0] ? halves[0].split(':') : [];
+    const rest = halves.length === 2 && halves[1] ? halves[1].split(':') : [];
+    const missing = 8 - head.length - rest.length;
+    if (halves.length === 1 ? missing !== 0 : missing < 1) return null;
+    const groups = [...head, ...Array(halves.length === 2 ? missing : 0).fill('0'), ...rest];
+    if (groups.length !== 8 || !groups.every((g) => /^[0-9a-f]{1,4}$/.test(g))) return null;
+    return groups.reduce((acc, g) => (acc << 16n) | BigInt(parseInt(g, 16)), 0n);
+  }
+
+  /** Canonical IPv6 text (RFC 5952): lowercase, longest zero run of two or more groups compressed. */
+  function bigIntToIpv6(value) {
+    const groups = [];
+    for (let i = 7; i >= 0; i--) groups.push(Number((value >> BigInt(i * 16)) & 0xffffn));
+    let bestStart = -1;
+    let bestLength = 0;
+    for (let i = 0; i < 8; i++) {
+      if (groups[i] !== 0) continue;
+      let j = i;
+      while (j < 8 && groups[j] === 0) j++;
+      if (j - i > bestLength) { bestStart = i; bestLength = j - i; }
+      i = j;
+    }
+    const hex = groups.map((g) => g.toString(16));
+    if (bestLength < 2) return hex.join(':');
+    return `${hex.slice(0, bestStart).join(':')}::${hex.slice(bestStart + bestLength).join(':')}`;
+  }
+
+  const IPV6_SCOPES = [
+    ['::1', 128, 'Loopback'],
+    ['::', 128, 'Unspecified'],
+    ['::ffff:0:0', 96, 'IPv4-mapped'],
+    ['64:ff9b::', 96, 'NAT64 (RFC 6052)'],
+    ['2001:db8::', 32, 'Documentation (RFC 3849)'],
+    ['fc00::', 7, 'Unique local (RFC 4193)'],
+    ['fe80::', 10, 'Link-local'],
+    ['ff00::', 8, 'Multicast'],
+    ['2000::', 3, 'Global unicast'],
+  ];
+
+  function ipv6Scope(value) {
+    for (const [base, prefix, label] of IPV6_SCOPES) {
+      const shift = BigInt(128 - prefix);
+      if ((value >> shift) === (ipv6ToBigInt(base) >> shift)) return label;
+    }
+    return 'Reserved';
+  }
+
+  /** Group a whole number with commas, or show a power of two when it is too long to read. */
+  function formatCount(value, bits) {
+    if (bits > 64) return `2^${bits}`;
+    return String(value).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  /**
+   * Work out a subnet from "address/prefix" or "address mask".
+   * Returns { ok: false, error } or { ok: true, version, rows: [{ label, value }], ... }.
+   * rows is what the UI and the report print, in order.
+   */
+  function calculateSubnet(input) {
+    const text = String(input == null ? '' : input).trim();
+    if (!text) return { ok: false, error: 'Enter an address with a prefix, for example 192.168.1.10/24' };
+    if (text.length > 100) return { ok: false, error: 'That is too long to be an address' };
+
+    const spaced = text.split(/\s+/);
+    let address = text;
+    let prefixText = null;
+    let maskText = null;
+    if (text.includes('/')) {
+      const parts = text.split('/');
+      if (parts.length !== 2) return { ok: false, error: 'Use one slash, as in 10.0.0.0/8' };
+      address = parts[0].trim();
+      prefixText = parts[1].trim();
+      if (isIPv4(prefixText)) { maskText = prefixText; prefixText = null; }
+    } else if (spaced.length === 2) {
+      [address, maskText] = spaced;
+    } else if (spaced.length > 2) {
+      return { ok: false, error: 'Enter one address and one prefix or mask' };
+    }
+
+    if (isIPv4(address)) {
+      let prefix;
+      if (maskText !== null) {
+        prefix = maskToPrefix(maskText);
+        if (prefix === null) return { ok: false, error: `${maskText} is not a valid subnet mask. The 1 bits must be contiguous, as in 255.255.255.0` };
+      } else if (prefixText === null) {
+        return { ok: false, error: 'Add a prefix length or mask, for example /24 or 255.255.255.0' };
+      } else {
+        if (!/^\d{1,2}$/.test(prefixText) || Number(prefixText) > 32) return { ok: false, error: 'An IPv4 prefix length is a whole number from 0 to 32' };
+        prefix = Number(prefixText);
+      }
+      const ip = ipv4ToInt(address);
+      const size = 2 ** (32 - prefix);
+      const network = Math.floor(ip / size) * size;
+      const last = network + size - 1;
+      const mask = prefix === 0 ? 0 : (0xffffffff - (size - 1));
+      // /31 is a point-to-point link with two usable addresses (RFC 3021); /32 is one host.
+      const usable = prefix >= 31 ? size : size - 2;
+      const firstHost = prefix >= 31 ? network : network + 1;
+      const lastHost = prefix >= 31 ? last : last - 1;
+      const cidr = `${intToIpv4(network)}/${prefix}`;
+      let note = '';
+      if (prefix === 32) note = 'A /32 is a single host route.';
+      else if (prefix === 31) note = 'A /31 is a point-to-point link: both addresses are usable and there is no broadcast address (RFC 3021).';
+      else if (ip === network) note = 'The address you entered is the network address itself.';
+      else if (ip === last) note = 'The address you entered is the broadcast address.';
+      const rows = [
+        { label: 'Network', value: cidr },
+        { label: 'Subnet mask', value: intToIpv4(mask) },
+        { label: 'Wildcard mask', value: intToIpv4(size - 1) },
+        { label: 'Broadcast', value: prefix >= 31 ? 'None' : intToIpv4(last) },
+        { label: 'First usable', value: intToIpv4(firstHost) },
+        { label: 'Last usable', value: intToIpv4(lastHost) },
+        { label: 'Usable hosts', value: formatCount(usable, 32 - prefix) },
+        { label: 'Total addresses', value: formatCount(size, 32 - prefix) },
+        { label: 'Address type', value: ipv4Scope(ip) },
+      ];
+      return { ok: true, version: 4, address: intToIpv4(ip), prefix, cidr, rows, note };
+    }
+
+    const value = address.includes(':') ? ipv6ToBigInt(address) : null;
+    if (value === null) return { ok: false, error: `${address.slice(0, 45)} is not a valid IPv4 or IPv6 address` };
+    if (maskText !== null) return { ok: false, error: 'IPv6 uses a prefix length, for example 2001:db8::/48, not a dotted mask' };
+    if (prefixText === null) return { ok: false, error: 'Add a prefix length, for example /64' };
+    if (!/^\d{1,3}$/.test(prefixText) || Number(prefixText) > 128) return { ok: false, error: 'An IPv6 prefix length is a whole number from 0 to 128' };
+    const prefix = Number(prefixText);
+    const hostBits = 128 - prefix;
+    const size = 1n << BigInt(hostBits);
+    const network = (value >> BigInt(hostBits)) << BigInt(hostBits);
+    const cidr = `${bigIntToIpv6(network)}/${prefix}`;
+    const rows = [
+      { label: 'Network', value: cidr },
+      { label: 'First address', value: bigIntToIpv6(network) },
+      { label: 'Last address', value: bigIntToIpv6(network + size - 1n) },
+      { label: 'Total addresses', value: formatCount(size, hostBits) },
+      { label: 'Address type', value: ipv6Scope(value) },
+    ];
+    if (prefix <= 64) rows.splice(4, 0, { label: '/64 networks', value: formatCount(1n << BigInt(64 - prefix), 64 - prefix) });
+    const note = prefix > 64 && prefix < 127 ? 'Prefixes longer than /64 break SLAAC address autoconfiguration on a LAN.' : '';
+    return { ok: true, version: 6, address: bigIntToIpv6(value), prefix, cidr, rows, note };
+  }
+
+  // ============================================================
+  // JWT INSPECTOR (local only: the token is never sent, stored or exported)
+  // ============================================================
+  const JWT_MAX_LENGTH = 16384;
+
+  /** Decode one base64url segment to a UTF-8 string, or throw. */
+  function decodeBase64Url(segment) {
+    if (!/^[A-Za-z0-9_-]*$/.test(segment)) throw new Error('not base64url');
+    const padded = segment.replace(/-/g, '+').replace(/_/g, '/') + '='.repeat((4 - (segment.length % 4)) % 4);
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+  }
+
+  /** "3 days", "5 hours", "12 minutes" or "40 seconds" for a span in milliseconds. */
+  function describeDuration(ms) {
+    const seconds = Math.round(Math.abs(ms) / 1000);
+    const units = [['year', 31536000], ['day', 86400], ['hour', 3600], ['minute', 60]];
+    for (const [name, size] of units) {
+      if (seconds >= size) {
+        const n = Math.floor(seconds / size);
+        return `${n} ${name}${n === 1 ? '' : 's'}`;
+      }
+    }
+    return `${seconds} second${seconds === 1 ? '' : 's'}`;
+  }
+
+  const JWT_CLAIM_NAMES = {
+    iss: 'Issuer', sub: 'Subject', aud: 'Audience', exp: 'Expires', nbf: 'Not valid before',
+    iat: 'Issued at', jti: 'Token ID', scope: 'Scope', azp: 'Authorized party', nonce: 'Nonce',
+  };
+
+  /**
+   * Decode a JSON Web Token and point out what is risky about it. Nothing here
+   * verifies the signature: that needs the issuer's key, which this page never asks for.
+   * Returns { ok: false, error } or
+   * { ok: true, header, payload, algorithm, status, claims, findings, signatureLength }.
+   * status is 'active', 'expired', 'not-yet-valid' or 'no-expiry'.
+   */
+  function inspectJwt(input, now = Date.now()) {
+    let token = String(input == null ? '' : input).trim().replace(/^Bearer\s+/i, '');
+    if (!token) return { ok: false, error: 'Paste a token to decode it' };
+    if (token.length > JWT_MAX_LENGTH) return { ok: false, error: `That is longer than ${JWT_MAX_LENGTH.toLocaleString('en-US')} characters, which is too long for a token` };
+    if (/\s/.test(token)) return { ok: false, error: 'A token has no spaces or line breaks. Check that you copied only the token' };
+    const parts = token.split('.');
+    if (parts.length === 5) return { ok: false, error: 'This is an encrypted token (JWE, five parts). Its contents cannot be read without the decryption key' };
+    if (parts.length !== 3) return { ok: false, error: `A signed token has three parts separated by dots. This has ${parts.length}` };
+
+    const decodePart = (segment, label) => {
+      let text;
+      try { text = decodeBase64Url(segment); } catch { throw new Error(`The ${label} is not valid base64url text`); }
+      let value;
+      try { value = JSON.parse(text); } catch { throw new Error(`The ${label} is not valid JSON`); }
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`The ${label} is not a JSON object`);
+      return value;
+    };
+    let header;
+    let payload;
+    try {
+      header = decodePart(parts[0], 'header');
+      payload = decodePart(parts[1], 'payload');
+    } catch (err) {
+      return { ok: false, error: err.message };
+    }
+    if (!/^[A-Za-z0-9_-]*$/.test(parts[2])) return { ok: false, error: 'The signature is not valid base64url text' };
+
+    const findings = [];
+    const add = (icon, name, detail) => findings.push({ icon, name, detail });
+    const algorithm = typeof header.alg === 'string' ? header.alg : '';
+    const signatureLength = parts[2].length;
+
+    if (!algorithm) {
+      add('fail', 'Algorithm', 'The header has no alg value, so a verifier cannot know how to check this token');
+    } else if (algorithm.toLowerCase() === 'none') {
+      add('fail', 'Algorithm', 'alg is "none": the token is unsigned and anyone can forge it. A server must reject it');
+    } else if (/^HS\d+$/i.test(algorithm)) {
+      add('info', 'Algorithm', `${algorithm} is a shared-secret signature: every service that can verify this token can also create one`);
+    } else {
+      add('pass', 'Algorithm', `${algorithm} is a public-key signature: verifiers only need the public key`);
+    }
+    if (algorithm && algorithm.toLowerCase() !== 'none' && signatureLength === 0) {
+      add('fail', 'Signature', `The header says ${algorithm} but the signature is empty`);
+    }
+    for (const key of ['jku', 'x5u', 'jwk']) {
+      if (key in header) add('warn', 'Key hint in header', `The header carries ${key}. A verifier that trusts key material named by the token itself can be tricked into accepting a forged one`);
+    }
+
+    const claims = [];
+    const times = {};
+    for (const key of ['exp', 'nbf', 'iat']) {
+      if (!(key in payload)) continue;
+      const raw = payload[key];
+      if (typeof raw !== 'number' || !Number.isFinite(raw) || raw < 0 || raw > 253402300799) {
+        add('warn', JWT_CLAIM_NAMES[key], `${key} should be a number of seconds since 1970. This token has something else`);
+      } else {
+        times[key] = raw * 1000;
+      }
+    }
+
+    let status = 'active';
+    if (times.exp === undefined) {
+      status = 'no-expiry';
+      if (!('exp' in payload)) add('warn', 'Expires', 'No exp claim: this token never expires on its own, so a leaked copy works until the key changes');
+    } else if (times.exp <= now) {
+      status = 'expired';
+      add('warn', 'Expires', `Expired ${describeDuration(now - times.exp)} ago`);
+    } else {
+      add('pass', 'Expires', `Expires in ${describeDuration(times.exp - now)}`);
+    }
+    if (times.nbf !== undefined && times.nbf > now) {
+      if (status !== 'expired') status = 'not-yet-valid';
+      add('warn', 'Not valid before', `Not valid for another ${describeDuration(times.nbf - now)}`);
+    }
+    if (times.iat !== undefined && times.iat > now + 60000) {
+      add('warn', 'Issued at', `iat is ${describeDuration(times.iat - now)} in the future. The issuer's clock may be wrong`);
+    }
+    const issued = times.iat !== undefined ? times.iat : times.nbf;
+    if (times.exp !== undefined && issued !== undefined && times.exp - issued > 86400000) {
+      add('info', 'Lifetime', `Valid for ${describeDuration(times.exp - issued)}. Long-lived tokens are worth more to whoever steals one`);
+    }
+    add('info', 'Signature', 'Not verified. This page only decodes. Checking the signature needs the issuer\'s key');
+
+    for (const [key, value] of Object.entries(payload)) {
+      let shown = typeof value === 'string' ? value : JSON.stringify(value);
+      if (key in times) shown = `${new Date(times[key]).toISOString()} (${value})`;
+      claims.push({ key, label: JWT_CLAIM_NAMES[key] || key, value: shown });
+    }
+    return { ok: true, header, payload, algorithm: algorithm || 'missing', status, claims, findings, signatureLength };
+  }
+
+  const JWT_STATUS_LABELS = { active: 'Inside its validity window', expired: 'Expired', 'not-yet-valid': 'Not valid yet', 'no-expiry': 'No expiry set' };
+
+  /**
+   * What the report may keep about an inspected token: the algorithm, the
+   * validity status and the names and severities of the findings. No claim
+   * values and no part of the token itself.
+   */
+  function jwtReportSummary(result) {
+    if (!result || !result.ok) return null;
+    const algorithm = /^[A-Za-z0-9-]{1,16}$/.test(result.algorithm) ? result.algorithm : 'other';
+    const status = JWT_STATUS_LABELS[result.status] ? result.status : 'active';
+    const allowed = new Set(['Algorithm', 'Signature', 'Key hint in header', 'Lifetime', ...Object.values(JWT_CLAIM_NAMES)]);
+    const findings = result.findings
+      .filter((f) => f.icon !== 'pass' && f.icon !== 'info' && allowed.has(f.name))
+      .map((f) => ({ icon: f.icon, name: f.name }));
+    return { algorithm, status, findings };
+  }
+
+  // ============================================================
   // TEXT REPORT
   // ============================================================
   const STATUS_TAGS = { pass: '[PASS]', fail: '[FAIL]', warn: '[WARN]', info: '[INFO]' };
@@ -1020,9 +1366,22 @@
       lines.push(`Grade: ${grade.grade} (${grade.score} of 100)${grade.incomplete ? ', incomplete: some checks could not be looked up' : ''}. ${grade.summary}`);
       for (const c of state.scan.checks) {
         lines.push(`${STATUS_TAGS[c.icon] || '[?]'} ${c.name}: ${c.detail}`);
-        if (c.fix && c.icon !== 'pass') lines.push(`       How to fix: ${c.fix}`);
+        if (c.fix && c.icon !== 'pass') lines.push(`       ${c.icon === 'info' ? 'To set it up' : 'How to fix'}: ${c.fix}`);
       }
       lines.push('');
+    }
+    const net = state && state.subnet;
+    if (net && net.ok && Array.isArray(net.rows)) {
+      lines.push(`--- Subnet: ${net.cidr} ---`);
+      for (const row of net.rows) lines.push(`${row.label}: ${row.value}`);
+      lines.push('');
+    }
+    // Token check: algorithm, status and finding names only. Never the token or its claims.
+    const jwt = state && state.jwt;
+    if (jwt && JWT_STATUS_LABELS[jwt.status]) {
+      lines.push('--- Token Check ---', `Algorithm: ${jwt.algorithm}`, `Status: ${JWT_STATUS_LABELS[jwt.status]}`);
+      for (const f of jwt.findings || []) lines.push(`${STATUS_TAGS[f.icon] || '[?]'} ${f.name}`);
+      lines.push('Signature: not verified (decode only)', '');
     }
     lines.push('Generated by NetScope');
     return lines.join('\n');
@@ -1042,6 +1401,8 @@
     summarizeLatency, throughputMbps, gaugeDashOffset, GAUGE_CIRCUMFERENCE,
     speedAbortReason, abortKind, createDeadline, raceAbort, measureLatency, runTransferPhase, summarizeSpeedRun,
     parseIpapiCo, parseIpwhois, parseFreeipapi, countryFlag,
+    calculateSubnet, ipv6ToBigInt, bigIntToIpv6, maskToPrefix,
+    inspectJwt, jwtReportSummary, describeDuration, JWT_STATUS_LABELS,
     buildTextReport,
   };
 });

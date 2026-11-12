@@ -5,6 +5,9 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 ## [Unreleased]
 
 ### Added
+- Subnet calculator: network, mask, wildcard, broadcast, usable range, size and address type for IPv4 (prefix or dotted mask, /31 and /32 handled) and IPv6 (BigInt math, RFC 5952 text). Runs in the page with no network request and is included in the exported report.
+- JWT inspector: decodes a token's header and payload in the page and flags `alg: none`, a missing or empty signature, shared-secret algorithms, key hints in the header, missing or passed expiry, and long lifetimes. The token is never sent, saved or exported; the report keeps only the algorithm, status and finding names. The signature is not verified.
+- Tool tabs have accessible names when they collapse to icons on phones.
 - The domain scan gives a letter grade (A to F) with a score out of 100, says where points were lost, and adds a "How to fix" line under every problem. The grade and fixes are in the exported report. A lookup that fails marks the grade incomplete instead of lowering it.
 - DNS & Security scan checks MTA-STS, SMTP TLS reporting (TLS-RPT) and BIMI, probes 18 common DKIM selectors in parallel and lists every one it finds.
 - One overall verdict for a scan (looks good, needs attention, at risk) with counts, and a plain-language explanation under each check.

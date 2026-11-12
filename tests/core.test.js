@@ -1003,3 +1003,236 @@ test('buildTextReport includes the grade and how to fix each problem', () => {
   assert.match(report, /\[FAIL\] SPF Record: No SPF record found[^\n]*\n {7}How to fix: Publish one TXT record/);
   assert.equal(report.match(/How to fix:/g).length, 1);
 });
+
+// ------------------------------------------------------------
+// Subnet calculator
+// ------------------------------------------------------------
+const rowMap = (result) => Object.fromEntries(result.rows.map((r) => [r.label, r.value]));
+
+test('calculateSubnet works out an IPv4 /24 from a host address', () => {
+  const result = Core.calculateSubnet(' 192.168.1.10/24 ');
+  assert.equal(result.ok, true);
+  assert.equal(result.cidr, '192.168.1.0/24');
+  assert.deepEqual(rowMap(result), {
+    Network: '192.168.1.0/24', 'Subnet mask': '255.255.255.0', 'Wildcard mask': '0.0.0.255',
+    Broadcast: '192.168.1.255', 'First usable': '192.168.1.1', 'Last usable': '192.168.1.254',
+    'Usable hosts': '254', 'Total addresses': '256', 'Address type': 'Private (RFC 1918)',
+  });
+});
+
+test('calculateSubnet accepts a dotted mask after a space or a slash', () => {
+  for (const input of ['10.0.0.1 255.255.252.0', '10.0.0.1/255.255.252.0', '10.0.0.1   255.255.252.0']) {
+    const rows = rowMap(Core.calculateSubnet(input));
+    assert.equal(rows.Network, '10.0.0.0/22', input);
+    assert.equal(rows.Broadcast, '10.0.3.255');
+    assert.equal(rows['Usable hosts'], '1,022');
+  }
+  assert.match(Core.calculateSubnet('10.0.0.1 255.0.255.0').error, /not a valid subnet mask/);
+  assert.equal(Core.maskToPrefix('255.255.255.255'), 32);
+  assert.equal(Core.maskToPrefix('0.0.0.0'), 0);
+  assert.equal(Core.maskToPrefix('255.255.255.128'), 25);
+  assert.equal(Core.maskToPrefix('255.255.255.1'), null);
+});
+
+test('calculateSubnet handles the edges: /0, /31, /32 and the top of the address space', () => {
+  const all = rowMap(Core.calculateSubnet('0.0.0.0/0'));
+  assert.equal(all['Subnet mask'], '0.0.0.0');
+  assert.equal(all.Broadcast, '255.255.255.255');
+  assert.equal(all['Total addresses'], '4,294,967,296');
+
+  const link = Core.calculateSubnet('10.1.2.3/31');
+  assert.deepEqual([rowMap(link)['First usable'], rowMap(link)['Last usable'], rowMap(link)['Usable hosts'], rowMap(link).Broadcast], ['10.1.2.2', '10.1.2.3', '2', 'None']);
+  assert.match(link.note, /RFC 3021/);
+
+  const host = Core.calculateSubnet('255.255.255.255/32');
+  assert.equal(rowMap(host).Network, '255.255.255.255/32');
+  assert.equal(rowMap(host)['Usable hosts'], '1');
+
+  const top = rowMap(Core.calculateSubnet('255.255.255.200/25'));
+  assert.equal(top.Network, '255.255.255.128/25');
+  assert.equal(top.Broadcast, '255.255.255.255');
+  assert.equal(top['Subnet mask'], '255.255.255.128');
+
+  assert.match(Core.calculateSubnet('192.168.1.0/24').note, /network address/);
+  assert.match(Core.calculateSubnet('192.168.1.255/24').note, /broadcast address/);
+});
+
+test('calculateSubnet labels special IPv4 ranges', () => {
+  const type = (input) => rowMap(Core.calculateSubnet(input))['Address type'];
+  assert.equal(type('8.8.8.8/32'), 'Public');
+  assert.equal(type('172.31.255.1/16'), 'Private (RFC 1918)');
+  assert.equal(type('172.32.0.1/16'), 'Public');
+  assert.equal(type('100.64.0.1/10'), 'Carrier-grade NAT (RFC 6598)');
+  assert.equal(type('169.254.10.1/16'), 'Link-local (RFC 3927)');
+  assert.equal(type('203.0.113.7/24'), 'Documentation (RFC 5737)');
+  assert.equal(type('224.0.0.251/4'), 'Multicast');
+  assert.equal(type('127.0.0.1/8'), 'Loopback');
+});
+
+test('calculateSubnet handles IPv6 with BigInt math and canonical text', () => {
+  const doc = Core.calculateSubnet('2001:0DB8:0000:0000:0000:0000:0000:0001/48');
+  assert.equal(doc.version, 6);
+  assert.equal(doc.address, '2001:db8::1');
+  assert.deepEqual(rowMap(doc), {
+    Network: '2001:db8::/48', 'First address': '2001:db8::', 'Last address': '2001:db8:0:ffff:ffff:ffff:ffff:ffff',
+    'Total addresses': '2^80', '/64 networks': '65,536', 'Address type': 'Documentation (RFC 3849)',
+  });
+  const lan = rowMap(Core.calculateSubnet('fe80::1/64'));
+  assert.equal(lan['Total addresses'], '18,446,744,073,709,551,616');
+  assert.equal(lan['Address type'], 'Link-local');
+  assert.equal(rowMap(Core.calculateSubnet('fd12:3456:789a::1/48'))['Address type'], 'Unique local (RFC 4193)');
+  assert.equal(rowMap(Core.calculateSubnet('2606:4700::1111/32'))['Address type'], 'Global unicast');
+  assert.equal(rowMap(Core.calculateSubnet('::1/128'))['Address type'], 'Loopback');
+  assert.equal(rowMap(Core.calculateSubnet('::/0'))['Last address'], 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff');
+  assert.equal(rowMap(Core.calculateSubnet('::ffff:192.0.2.1/96')).Network, '::ffff:0:0/96');
+  assert.match(Core.calculateSubnet('2001:db8::/80').note, /SLAAC/);
+});
+
+test('IPv6 text round-trips and compresses the first longest zero run', () => {
+  const cases = { '2001:db8:0:0:1:0:0:1': '2001:db8::1:0:0:1', '0:0:0:0:0:0:0:0': '::', '1:0:0:0:0:0:0:0': '1::', '2001:db8:0:1:1:1:1:1': '2001:db8:0:1:1:1:1:1', 'FE80::A': 'fe80::a' };
+  for (const [input, expected] of Object.entries(cases)) {
+    assert.equal(Core.bigIntToIpv6(Core.ipv6ToBigInt(input)), expected, input);
+  }
+  for (const bad of ['1::2::3', ':::', '12345::', '1:2:3:4:5:6:7', '1:2:3:4:5:6:7:8:9', 'g::1', '::1.2.3.999', '1:2:3:4:5:6:7::8']) {
+    assert.equal(Core.ipv6ToBigInt(bad), null, bad);
+  }
+});
+
+test('calculateSubnet explains bad input instead of guessing', () => {
+  const error = (input) => { const r = Core.calculateSubnet(input); assert.equal(r.ok, false, String(input)); return r.error; };
+  assert.match(error(''), /Enter an address/);
+  assert.match(error(null), /Enter an address/);
+  assert.match(error('192.168.1.10'), /Add a prefix length or mask/);
+  assert.match(error('192.168.1.10/33'), /0 to 32/);
+  assert.match(error('192.168.1.10/-1'), /0 to 32/);
+  assert.match(error('192.168.1.10/2.5'), /0 to 32/);
+  assert.match(error('192.168.1.256/24'), /not a valid IPv4 or IPv6 address/);
+  assert.match(error('10.0.0.0/8/9'), /one slash/);
+  assert.match(error('10.0.0.0 255.0.0.0 extra'), /one address/);
+  assert.match(error('2001:db8::/129'), /0 to 128/);
+  assert.match(error('2001:db8::'), /Add a prefix length/);
+  assert.match(error('2001:db8:: 255.255.0.0'), /not a dotted mask/);
+  assert.match(error('<b>x/24'), /not a valid/);
+  assert.match(error('1'.repeat(200)), /too long/);
+});
+
+// ------------------------------------------------------------
+// JWT inspector
+// ------------------------------------------------------------
+const b64url = (value) => Buffer.from(typeof value === 'string' ? value : JSON.stringify(value)).toString('base64url');
+const makeJwt = (header, payload, signature = 'c2lnbmF0dXJl') => `${b64url(header)}.${b64url(payload)}.${signature}`;
+const NOW = Date.UTC(2026, 0, 1, 12, 0, 0);
+const nowSeconds = NOW / 1000;
+const finding = (result, name) => result.findings.filter((f) => f.name === name);
+
+test('inspectJwt decodes the header and payload and explains the time claims', () => {
+  const token = makeJwt({ alg: 'RS256', typ: 'JWT', kid: 'demo' }, { iss: 'https://issuer.example', sub: 'demo-user', iat: nowSeconds - 600, exp: nowSeconds + 3000, name: 'Zoë Exämple' });
+  const result = Core.inspectJwt(`Bearer ${token}\n`, NOW);
+  assert.equal(result.ok, true);
+  assert.equal(result.algorithm, 'RS256');
+  assert.equal(result.status, 'active');
+  assert.deepEqual(result.header, { alg: 'RS256', typ: 'JWT', kid: 'demo' });
+  assert.equal(result.payload.name, 'Zoë Exämple', 'UTF-8 claims decode correctly');
+  assert.equal(finding(result, 'Algorithm')[0].icon, 'pass');
+  assert.match(finding(result, 'Expires')[0].detail, /Expires in 50 minutes/);
+  const exp = result.claims.find((c) => c.key === 'exp');
+  assert.equal(exp.label, 'Expires');
+  assert.equal(exp.value, `2026-01-01T12:50:00.000Z (${nowSeconds + 3000})`);
+  assert.ok(finding(result, 'Signature').some((f) => /Not verified/.test(f.detail)), 'always says the signature was not verified');
+});
+
+test('inspectJwt flags unsigned, expired, not yet valid and never-expiring tokens', () => {
+  const none = Core.inspectJwt(makeJwt({ alg: 'none' }, { sub: 'x', exp: nowSeconds + 60 }, ''), NOW);
+  assert.equal(finding(none, 'Algorithm')[0].icon, 'fail');
+  assert.match(finding(none, 'Algorithm')[0].detail, /unsigned/);
+  assert.equal(finding(Core.inspectJwt(makeJwt({ alg: 'NoNe' }, {}, ''), NOW), 'Algorithm')[0].icon, 'fail', 'alg none is matched in any case');
+
+  const expired = Core.inspectJwt(makeJwt({ alg: 'ES256' }, { exp: nowSeconds - 7200 }), NOW);
+  assert.equal(expired.status, 'expired');
+  assert.match(finding(expired, 'Expires')[0].detail, /Expired 2 hours ago/);
+
+  const early = Core.inspectJwt(makeJwt({ alg: 'ES256' }, { nbf: nowSeconds + 90, exp: nowSeconds + 900 }), NOW);
+  assert.equal(early.status, 'not-yet-valid');
+  assert.match(finding(early, 'Not valid before')[0].detail, /another 1 minute/);
+
+  const forever = Core.inspectJwt(makeJwt({ alg: 'ES256' }, { sub: 'x' }), NOW);
+  assert.equal(forever.status, 'no-expiry');
+  assert.equal(finding(forever, 'Expires')[0].icon, 'warn');
+});
+
+test('inspectJwt points out shared secrets, stripped signatures, key hints, long lifetimes and bad time values', () => {
+  const hs = Core.inspectJwt(makeJwt({ alg: 'HS256' }, { iat: nowSeconds, exp: nowSeconds + 30 * 86400 }), NOW);
+  assert.equal(finding(hs, 'Algorithm')[0].icon, 'info');
+  assert.match(finding(hs, 'Lifetime')[0].detail, /30 days/);
+
+  const stripped = Core.inspectJwt(makeJwt({ alg: 'RS256' }, { exp: nowSeconds + 60 }, ''), NOW);
+  assert.ok(finding(stripped, 'Signature').some((f) => f.icon === 'fail'));
+
+  const hinted = Core.inspectJwt(makeJwt({ alg: 'RS256', jku: 'https://attacker.example/keys' }, { exp: nowSeconds + 60 }), NOW);
+  assert.equal(finding(hinted, 'Key hint in header')[0].icon, 'warn');
+
+  const odd = Core.inspectJwt(makeJwt({ alg: 'RS256' }, { exp: 'tomorrow', iat: nowSeconds + 3600 }), NOW);
+  assert.equal(odd.status, 'no-expiry');
+  assert.match(finding(odd, 'Expires')[0].detail, /should be a number/);
+  assert.match(finding(odd, 'Issued at')[0].detail, /in the future/);
+
+  assert.equal(finding(Core.inspectJwt(makeJwt({ typ: 'JWT' }, { exp: nowSeconds + 60 }), NOW), 'Algorithm')[0].icon, 'fail');
+});
+
+test('inspectJwt rejects malformed input with a specific message', () => {
+  const error = (input) => { const r = Core.inspectJwt(input, NOW); assert.equal(r.ok, false); return r.error; };
+  assert.match(error(''), /Paste a token/);
+  assert.match(error(undefined), /Paste a token/);
+  assert.match(error('abc.def'), /three parts[^]*This has 2/);
+  assert.match(error('a.b.c.d.e'), /encrypted token/);
+  assert.match(error('a b.c.d'), /no spaces/);
+  assert.match(error('!!!.e30.sig'), /header is not valid base64url/);
+  assert.match(error(`${b64url('not json')}.e30.sig`), /header is not valid JSON/);
+  assert.match(error(`${b64url('[1]')}.e30.sig`), /header is not a JSON object/);
+  assert.match(error(`${b64url({ alg: 'RS256' })}.${b64url('"text"')}.sig`), /payload is not a JSON object/);
+  assert.match(error(`${b64url({ alg: 'RS256' })}.${Buffer.from([0xff, 0xfe]).toString('base64url')}.sig`), /payload is not valid base64url/);
+  assert.match(error(`${b64url({ alg: 'RS256' })}.e30.si+g`), /signature is not valid base64url/);
+  assert.match(error('a'.repeat(20000)), /too long/);
+});
+
+test('inspectJwt keeps hostile claim text as data', () => {
+  const hostile = '<img src=x onerror=alert(1)>';
+  const result = Core.inspectJwt(makeJwt({ alg: 'RS256' }, { sub: hostile, exp: nowSeconds + 60, nested: { a: [1, 2] } }), NOW);
+  assert.equal(result.claims.find((c) => c.key === 'sub').value, hostile);
+  assert.equal(result.claims.find((c) => c.key === 'nested').value, '{"a":[1,2]}');
+  assert.ok(!Core.escapeHtml(result.claims[0].value).includes('<'));
+});
+
+test('describeDuration picks the largest whole unit', () => {
+  assert.equal(Core.describeDuration(999), '1 second');
+  assert.equal(Core.describeDuration(45000), '45 seconds');
+  assert.equal(Core.describeDuration(60000), '1 minute');
+  assert.equal(Core.describeDuration(-7200000), '2 hours');
+  assert.equal(Core.describeDuration(3 * 86400000), '3 days');
+  assert.equal(Core.describeDuration(800 * 86400000), '2 years');
+});
+
+test('jwtReportSummary and the report never carry the token or its claims', () => {
+  const secretClaim = 'customer-7f3a-private';
+  const token = makeJwt({ alg: 'none', kid: 'key-id-123' }, { sub: secretClaim, email: 'person@example.com' }, '');
+  const result = Core.inspectJwt(token, NOW);
+  const summary = Core.jwtReportSummary(result);
+  assert.deepEqual(summary, { algorithm: 'none', status: 'no-expiry', findings: [{ icon: 'fail', name: 'Algorithm' }, { icon: 'warn', name: 'Expires' }] });
+  assert.equal(Core.jwtReportSummary({ ok: false, error: 'x' }), null);
+  assert.equal(Core.jwtReportSummary(Core.inspectJwt(makeJwt({ alg: '<b>weird alg value</b>' }, {}), NOW)).algorithm, 'other');
+
+  const report = Core.buildTextReport({ jwt: summary }, new Date(0));
+  assert.match(report, /--- Token Check ---\nAlgorithm: none\nStatus: No expiry set\n\[FAIL\] Algorithm\n\[WARN\] Expires\nSignature: not verified/);
+  for (const leak of [secretClaim, 'person@example.com', 'key-id-123', ...token.split('.').filter(Boolean)]) {
+    assert.ok(!report.includes(leak), `report leaked ${leak}`);
+    assert.ok(!JSON.stringify(summary).includes(leak), `summary leaked ${leak}`);
+  }
+});
+
+test('buildTextReport adds a subnet section and skips failed calculations', () => {
+  const report = Core.buildTextReport({ subnet: Core.calculateSubnet('10.20.30.40/20') }, new Date(0));
+  assert.match(report, /--- Subnet: 10\.20\.16\.0\/20 ---\nNetwork: 10\.20\.16\.0\/20\nSubnet mask: 255\.255\.240\.0/);
+  assert.match(report, /Usable hosts: 4,094/);
+  assert.ok(!/Subnet/.test(Core.buildTextReport({ subnet: Core.calculateSubnet('nope') }, new Date(0))));
+  assert.ok(!/Token Check/.test(Core.buildTextReport({ jwt: null }, new Date(0))));
+});
