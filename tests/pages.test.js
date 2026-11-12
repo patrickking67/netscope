@@ -104,10 +104,11 @@ test('password input is never stored, exported or sent anywhere but the k-anonym
 test('app tool tabs follow the ARIA tabs pattern', () => {
   const html = read('pages/app.html');
   const tabs = [...html.matchAll(/<button[^>]+class="tab-bar-item[^"]*"[^>]*>/g)].map((m) => m[0]);
-  assert.equal(tabs.length, 5);
+  assert.equal(tabs.length, 7);
   for (const tab of tabs) {
     const id = tab.match(/data-tab="([a-z-]+)"/)[1];
     assert.match(tab, /role="tab"/);
+    assert.match(tab, /aria-label="[^"]+"/, 'tabs are icon-only on phones, so each needs a name');
     assert.match(tab, new RegExp(`aria-controls="panel-${id}"`));
     assert.match(html, new RegExp(`id="panel-${id}"[^>]*role="tabpanel"[^>]*aria-labelledby="tab-${id}"`));
   }
@@ -116,13 +117,13 @@ test('app tool tabs follow the ARIA tabs pattern', () => {
 
 test('app result regions announce updates and icon-only controls have names', () => {
   const html = read('pages/app.html');
-  for (const id of ['email-result', 'password-result', 'scan-results', 'toast']) {
+  for (const id of ['email-result', 'password-result', 'scan-results', 'subnet-results', 'jwt-results', 'toast']) {
     assert.match(html, new RegExp(`id="${id}"[^>]*aria-live="polite"`), id);
   }
   for (const id of ['toggle-password', 'pwgen-copy', 'export-trigger', 'btn-full-scan']) {
     assert.match(html, new RegExp(`id="${id}"[^>]*aria-label="[^"]+"`), id);
   }
-  for (const id of ['email-input', 'password-input', 'scan-input']) {
+  for (const id of ['email-input', 'password-input', 'scan-input', 'subnet-input', 'jwt-input']) {
     assert.match(html, new RegExp(`id="${id}"[^>]*aria-label="[^"]+"`), id);
   }
 });
@@ -136,4 +137,54 @@ test('every third-party call in app.js goes through the timeout helper', () => {
   }
   assert.match(app, /Core\.checkEmailExposure\(email, \{ fetchImpl: timedFetch \}\)/);
   assert.match(app, /Core\.checkPwnedPassword\(password, \{ fetchImpl: timedFetch \}\)/);
+});
+
+test('every tool tab has a matching link in the mobile menu', () => {
+  const html = read('pages/app.html');
+  const tabs = [...html.matchAll(/class="tab-bar-item[^"]*" data-tab="([a-z-]+)"/g)].map((m) => m[1]);
+  const links = [...html.matchAll(/class="mobile-nav-link" data-tab="([a-z-]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(links, tabs);
+});
+
+test('the subnet calculator and JWT inspector run locally and keep the token out of state', () => {
+  const app = read('assets/js/app.js');
+  const start = app.indexOf('// LOCAL TOOLS');
+  const end = app.indexOf('// EXPORT');
+  assert.ok(start !== -1 && end > start, 'local tools section not found');
+  const section = app.slice(start, end);
+  assert.ok(!/fetch|XMLHttpRequest|sendBeacon|WebSocket|localStorage|sessionStorage|console\./.test(section), 'local tools must not use the network, storage or the console');
+  // The token is read in runJwtInspect, written by the sample and clear buttons, and bound once for the keyboard shortcut.
+  assert.equal([...app.matchAll(/jwt-input/g)].length, 4);
+  assert.match(section, /state\.jwt = Core\.jwtReportSummary\(result\);/);
+  assert.equal([...section.matchAll(/state\.jwt = /g)].length, 4, 'state.jwt is only ever the summary or null');
+  // Cloud save picks named fields and must not start saving these.
+  assert.ok(!/jwt|subnet/i.test(read('assets/js/firestore.js')));
+});
+
+test('local tool panels start with an empty state and explain that nothing is sent', () => {
+  const html = read('pages/app.html');
+  assert.match(html, /id="subnet-results"[^>]*><div class="tool-status tool-status--empty">/);
+  assert.match(html, /id="jwt-results"[^>]*><div class="tool-status tool-status--empty">/);
+  assert.match(html, /The token is never sent, saved or added to the exported report/);
+  assert.match(html, /<textarea id="jwt-input"[^>]*aria-describedby="jwt-hint"/);
+});
+
+test('landing page has a 1200x630 social image, real screenshots with alt text and owner links', () => {
+  const html = read('index.html');
+  const og = html.match(/<meta property="og:image" content="(https:\/\/patrickking67\.github\.io\/netscope\/([^"]+))">/);
+  assert.ok(og, 'og:image must be an absolute URL on the live site');
+  assert.match(html, new RegExp(`<meta name="twitter:image" content="${og[1].replace(/[.]/g, '\\.')}">`));
+  const png = fs.readFileSync(path.join(root, og[2]));
+  assert.equal(png.readUInt32BE(16), 1200, 'og:image width');
+  assert.equal(png.readUInt32BE(20), 630, 'og:image height');
+  assert.ok(png.length < 300 * 1024, 'og:image stays under 300 KB');
+  const shots = [...html.matchAll(/<img class="hero-shot-img[^>]*>/g)].map((m) => m[0]);
+  assert.equal(shots.length, 2, 'one screenshot per theme');
+  for (const tag of shots) {
+    assert.match(tag, /alt="[^"]{40,}"/);
+    assert.match(tag, /width="1280" height="800"/, 'explicit size avoids layout shift');
+    assert.ok(fs.statSync(path.join(root, tag.match(/src="([^"]+)"/)[1])).size < 300 * 1024);
+  }
+  assert.match(html, /href="https:\/\/github\.com\/patrickking67"/);
+  assert.match(html, /<svg class="kanon-svg"[^>]*role="img" aria-labelledby="kanon-title kanon-desc">/);
 });

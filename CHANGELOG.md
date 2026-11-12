@@ -5,6 +5,10 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 ## [Unreleased]
 
 ### Added
+- Subnet calculator: network, mask, wildcard, broadcast, usable range, size and address type for IPv4 (prefix or dotted mask, /31 and /32 handled) and IPv6 (BigInt math, RFC 5952 text). Runs in the page with no network request and is included in the exported report.
+- JWT inspector: decodes a token's header and payload in the page and flags `alg: none`, a missing or empty signature, shared-secret algorithms, key hints in the header, missing or passed expiry, and long lifetimes. The token is never sent, saved or exported; the report keeps only the algorithm, status and finding names. The signature is not verified.
+- Tool tabs have accessible names when they collapse to icons on phones.
+- The domain scan gives a letter grade (A to F) with a score out of 100, says where points were lost, and adds a "How to fix" line under every problem. The grade and fixes are in the exported report. A lookup that fails marks the grade incomplete instead of lowering it.
 - DNS & Security scan checks MTA-STS, SMTP TLS reporting (TLS-RPT) and BIMI, probes 18 common DKIM selectors in parallel and lists every one it finds.
 - One overall verdict for a scan (looks good, needs attention, at risk) with counts, and a plain-language explanation under each check.
 - The text, email and PDF export includes the scan verdict and the email breach result.
@@ -14,6 +18,11 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 - `.claude/launch.json` for the local preview on port 4102, `llms.txt`, CONTRIBUTING.md, this changelog, editor and git attribute files, CODEOWNERS, Dependabot, and issue and pull request templates.
 
 ### Changed
+- README rewritten around what the project proves: real screenshots, Mermaid diagrams of the k-anonymity exchange and the trust boundaries, a quality table, and links from each claim to its code and test. `docs/architecture.md` adds component, domain scan and service worker diagrams. The per-check privacy table moved to SECURITY.md.
+- The static check fails when a documented unit test count does not match the real one. `npm run coverage` prints coverage for `core.js`.
+- Landing page: a real screenshot of the app in the hero, a diagram of the k-anonymity password check, and a section listing what the checks enforce, with links to the tests and CI. The footer links the source, architecture notes, security policy and the author's profile.
+- New 1200x630 Open Graph image built from the real interface.
+- Service worker cache bumped to `netscope-shell-v5` for the new tools and landing page.
 - Speed test requests have deadlines (2 seconds per ping, 8 seconds for latency, 3 seconds past each 12-second transfer phase), so a stalled connection ends with partial results instead of hanging. A Cancel button stops the test and keeps what was measured.
 - IP, breach and DNS requests time out after 10 seconds instead of hanging, and IP echo responses must be a valid address.
 - DMARC with `pct` under 100 is a warning, not a pass. A null MX record is reported as "does not accept email".
@@ -21,7 +30,6 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 - Muted text, status colors and primary buttons meet WCAG AA contrast in both themes. Focus rings are visible and reduced-motion preferences are respected.
 - Labels are sentence case, the landing badge says what the app does, and per-section scroll animations are gone.
 - On phones the Full Scan button collapses to an icon so the header no longer clips.
-- Service worker cache bumped to `netscope-shell-v4` so installed copies pick up the speed test and report changes.
 
 ### Fixed
 - Scanning a domain that does not exist now says so instead of grading missing SPF and DMARC as failures.

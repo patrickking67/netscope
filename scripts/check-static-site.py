@@ -82,6 +82,22 @@ try:
 except (OSError, ValueError) as exc:
     errors.append(f".claude/launch.json: {exc}")
 
+# Documented test counts must match the real number of tests, so the README badge and the site stay true.
+tap = subprocess.run(["node", "--test", "--test-reporter=tap", "tests/**/*.test.js"], cwd=root, capture_output=True, text=True)
+count_match = re.search(r"^# tests (\d+)$", tap.stdout, re.MULTILINE)
+if not count_match:
+    errors.append("could not count the unit tests")
+else:
+    actual = count_match.group(1)
+    for doc in ("README.md", "index.html", "llms.txt", "docs/architecture.md"):
+        text = (root / doc).read_text()
+        claims = re.findall(r"(\d+) unit tests", text) + re.findall(r"badge/tests-(\d+)", text)
+        for claim in claims:
+            if claim != actual:
+                errors.append(f"{doc}: says {claim} tests but there are {actual}")
+        if doc in ("README.md", "index.html") and not claims:
+            errors.append(f"{doc}: must state the unit test count")
+
 # Text lint: committed text uses no em dashes and no emoji.
 text_suffixes = {".html", ".css", ".js", ".json", ".md", ".txt", ".yml", ".yaml", ".py", ".svg", ".webmanifest", ".toml"}
 skip_dirs = {".git", ".worktrees", "node_modules"}
@@ -99,4 +115,4 @@ if errors:
     print("\n".join(errors))
     sys.exit(1)
 
-print(f"Validated {len(html_files)} HTML files, JavaScript syntax, docs, llms.txt, launch.json and the text lint.")
+print(f"Validated {len(html_files)} HTML files, JavaScript syntax, docs, llms.txt, launch.json, documented test counts and the text lint.")
