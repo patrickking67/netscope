@@ -168,3 +168,23 @@ test('local tool panels start with an empty state and explain that nothing is se
   assert.match(html, /The token is never sent, saved or added to the exported report/);
   assert.match(html, /<textarea id="jwt-input"[^>]*aria-describedby="jwt-hint"/);
 });
+
+test('landing page has a 1200x630 social image, real screenshots with alt text and owner links', () => {
+  const html = read('index.html');
+  const og = html.match(/<meta property="og:image" content="(https:\/\/patrickking67\.github\.io\/netscope\/([^"]+))">/);
+  assert.ok(og, 'og:image must be an absolute URL on the live site');
+  assert.match(html, new RegExp(`<meta name="twitter:image" content="${og[1].replace(/[.]/g, '\\.')}">`));
+  const png = fs.readFileSync(path.join(root, og[2]));
+  assert.equal(png.readUInt32BE(16), 1200, 'og:image width');
+  assert.equal(png.readUInt32BE(20), 630, 'og:image height');
+  assert.ok(png.length < 300 * 1024, 'og:image stays under 300 KB');
+  const shots = [...html.matchAll(/<img class="hero-shot-img[^>]*>/g)].map((m) => m[0]);
+  assert.equal(shots.length, 2, 'one screenshot per theme');
+  for (const tag of shots) {
+    assert.match(tag, /alt="[^"]{40,}"/);
+    assert.match(tag, /width="1280" height="800"/, 'explicit size avoids layout shift');
+    assert.ok(fs.statSync(path.join(root, tag.match(/src="([^"]+)"/)[1])).size < 300 * 1024);
+  }
+  assert.match(html, /href="https:\/\/github\.com\/patrickking67"/);
+  assert.match(html, /<svg class="kanon-svg"[^>]*role="img" aria-labelledby="kanon-title kanon-desc">/);
+});

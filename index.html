@@ -7,16 +7,20 @@
   <meta name="theme-color" content="#06060b">
   <meta name="referrer" content="strict-origin-when-cross-origin">
   <title>NetScope | Private Network Security Toolkit</title>
-  <meta name="description" content="Check your public IP, internet speed, breach exposure, DNS security, and more. Free, open-source, client-side.">
+  <meta name="description" content="Seven network security checks that run in your browser: IP, speed, breach checks with k-anonymity, passwords, a graded DNS and email security scan, a subnet calculator and a JWT inspector.">
   <meta property="og:title" content="NetScope - Network Security Toolkit">
-  <meta property="og:description" content="IP lookup, speed test, breach check, DNS security scan. All client-side, no data stored.">
+  <meta property="og:description" content="Seven network security checks that run in your browser. Static site, no backend, strict Content-Security-Policy.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://patrickking67.github.io/netscope/">
-  <meta property="og:image" content="https://patrickking67.github.io/netscope/assets/images/social-preview.png">
+  <meta property="og:image" content="https://patrickking67.github.io/netscope/assets/images/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="NetScope: seven network security checks that run in your browser, shown with the domain scan grading example.com">
+  <meta property="og:site_name" content="NetScope">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="NetScope - Network Security Toolkit">
-  <meta name="twitter:description" content="IP lookup, speed test, breach check, DNS security scan. All client-side.">
-  <meta name="twitter:image" content="https://patrickking67.github.io/netscope/assets/images/social-preview.png">
+  <meta name="twitter:description" content="Seven network security checks that run in your browser. Static site, no backend.">
+  <meta name="twitter:image" content="https://patrickking67.github.io/netscope/assets/images/og-image.png">
   <link rel="canonical" href="https://patrickking67.github.io/netscope/">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/images/favicon.svg" type="image/svg+xml">
@@ -88,111 +92,152 @@
     <div class="hero-content">
       <p class="hero-badge">Runs in your browser. No account needed.</p>
       <h1 class="hero-title">
-        <img class="hero-logo hero-logo--dark" src="assets/images/logo-dark.svg" alt="NetScope" height="48">
-        <img class="hero-logo hero-logo--light" src="assets/images/logo-light.svg" alt="NetScope" height="48">
+        <img class="hero-logo hero-logo--dark" src="assets/images/logo-dark.svg" alt="NetScope" width="216" height="48">
+        <img class="hero-logo hero-logo--light" src="assets/images/logo-light.svg" alt="NetScope" width="216" height="48">
       </h1>
-      <p class="hero-tagline">Know your network. Spot your exposure. Strengthen your security.</p>
-      <p class="hero-subtitle">IP lookup, speed testing, breach detection, password generation, and DNS security analysis in one privacy-conscious, installable browser workspace.</p>
-      <a href="pages/app.html" class="hero-cta">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Launch App
-      </a>
-      <div class="hero-features">
-        <div class="hero-feature">
-          <div class="hero-feature-icon hero-feature-icon--blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg></div>
-          <span>IP & Geolocation</span>
-        </div>
-        <div class="hero-feature">
-          <div class="hero-feature-icon hero-feature-icon--purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
-          <span>Speed Test</span>
-        </div>
-        <div class="hero-feature">
-          <div class="hero-feature-icon hero-feature-icon--red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
-          <span>Breach Check</span>
-        </div>
-        <div class="hero-feature">
-          <div class="hero-feature-icon hero-feature-icon--green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
-          <span>Password Gen</span>
-        </div>
-        <div class="hero-feature">
-          <div class="hero-feature-icon hero-feature-icon--cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/><line x1="6" y1="6" x2="6.01" y2="6"/><line x1="6" y1="18" x2="6.01" y2="18"/></svg></div>
-          <span>DNS Security</span>
-        </div>
+      <p class="hero-tagline">Seven network security checks that never hand your secrets to a server.</p>
+      <p class="hero-subtitle">IP and location, speed test, breach checks, password generator, a graded DNS and email security scan, a subnet calculator and a JWT inspector. One static site, no backend.</p>
+      <div class="hero-actions">
+        <a href="pages/app.html" class="hero-cta">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          Launch app
+        </a>
+        <a href="https://github.com/patrickking67/netscope" target="_blank" rel="noopener" class="hero-cta hero-cta--ghost">View source</a>
       </div>
     </div>
+    <figure class="hero-shot">
+      <a href="pages/app.html" aria-label="Open the app">
+        <img class="hero-shot-img hero-shot-img--dark" src="docs/assets/app-scan-dark.webp" width="1280" height="800" alt="NetScope scanning example.com: grade A with a score of 100, followed by its DNS records and email security checks">
+        <img class="hero-shot-img hero-shot-img--light" src="docs/assets/app-scan-light.webp" width="1280" height="800" alt="NetScope scanning example.com in the light theme: grade A with a score of 100, followed by its DNS records and email security checks">
+      </a>
+      <figcaption>The DNS and email security scan grading example.com. Every lookup goes straight from your browser to a public DNS-over-HTTPS resolver.</figcaption>
+    </figure>
+  </section>
+
+  <!-- How a password check stays private -->
+  <section class="landing-section" id="how-it-works" aria-labelledby="how-title">
+    <h2 class="landing-section-title" id="how-title">How a password check stays private</h2>
+    <p class="landing-section-subtitle">The breach service is asked about a hash prefix shared with many other passwords. It never learns which one is yours.</p>
+    <figure class="kanon">
+      <svg class="kanon-svg" viewBox="0 0 960 372" role="img" aria-labelledby="kanon-title kanon-desc">
+        <title id="kanon-title">The k-anonymity exchange</title>
+        <desc id="kanon-desc">The browser hashes the password with SHA-1, sends only the first five characters of the hash to the breach service, receives every hash suffix that shares that prefix, and compares the remaining thirty-five characters locally.</desc>
+        <defs>
+          <marker id="kanon-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" class="kanon-arrowhead"/></marker>
+        </defs>
+        <rect class="kanon-lane" x="1" y="1" width="500" height="370" rx="14"/>
+        <rect class="kanon-lane kanon-lane--remote" x="659" y="1" width="300" height="370" rx="14"/>
+        <text class="kanon-lane-title" x="24" y="34">Your browser</text>
+        <text class="kanon-lane-title" x="682" y="34">Have I Been Pwned range API</text>
+        <line class="kanon-boundary" x1="580" y1="44" x2="580" y2="364"/>
+        <text class="kanon-boundary-label" x="580" y="34" text-anchor="middle">the network</text>
+
+        <text class="kanon-step" x="24" y="76">1. Hash the password locally with SHA-1</text>
+        <rect class="kanon-box" x="24" y="88" width="454" height="40" rx="8"/>
+        <text class="kanon-mono" x="38" y="113"><tspan class="kanon-prefix">5BAA6</tspan><tspan class="kanon-suffix">1E4C9B93F3F0682250B6CF8331B7EE68FD8</tspan></text>
+
+        <text class="kanon-step" x="24" y="166">2. Send only the first 5 characters</text>
+        <line class="kanon-wire" x1="300" y1="161" x2="676" y2="161" marker-end="url(#kanon-arrow)"/>
+        <rect class="kanon-chip" x="496" y="145" width="168" height="32" rx="16"/>
+        <text class="kanon-mono kanon-prefix" x="580" y="166" text-anchor="middle">GET /range/5BAA6</text>
+        <rect class="kanon-box" x="682" y="141" width="254" height="40" rx="8"/>
+        <text class="kanon-note" x="696" y="166">looks up everything under 5BAA6</text>
+
+        <text class="kanon-step" x="24" y="236">3. Receive every suffix with that prefix</text>
+        <line class="kanon-wire" x1="676" y1="231" x2="318" y2="231" marker-end="url(#kanon-arrow)"/>
+        <rect class="kanon-chip" x="496" y="215" width="168" height="32" rx="16"/>
+        <text class="kanon-note" x="580" y="236" text-anchor="middle">suffix:count, padded</text>
+        <rect class="kanon-box" x="682" y="211" width="254" height="40" rx="8"/>
+        <text class="kanon-note" x="696" y="236">cannot tell which one you hold</text>
+
+        <text class="kanon-step" x="24" y="296">4. Compare the other 35 characters locally</text>
+        <rect class="kanon-box" x="24" y="308" width="454" height="40" rx="8"/>
+        <text class="kanon-mono" x="38" y="333"><tspan class="kanon-suffix">1E4C9B93F3F0682250B6CF8331B7EE68FD8</tspan><tspan class="kanon-match" dx="12">match</tspan></text>
+      </svg>
+      <ol class="kanon-steps">
+        <li><strong>Hash locally.</strong> The password is hashed with SHA-1 by the Web Crypto API. The example above is the hash of the word "password".</li>
+        <li><strong>Send five characters.</strong> Only the first 5 of the 40 hex characters go to <code>api.pwnedpasswords.com</code>, with padding requested so the response size gives nothing away.</li>
+        <li><strong>Receive every match for that prefix.</strong> The service returns all the hash suffixes it knows under that prefix, each with a breach count.</li>
+        <li><strong>Compare locally.</strong> The page looks for your 35-character suffix in that list. The password, the full hash and the suffix never leave the page.</li>
+      </ol>
+      <figcaption>A unit test records every request and fails if anything but the prefix is sent: <a href="https://github.com/patrickking67/netscope/blob/main/tests/core.test.js" target="_blank" rel="noopener">tests/core.test.js</a>. The code is <code>checkPwnedPassword</code> in <a href="https://github.com/patrickking67/netscope/blob/main/assets/js/core.js" target="_blank" rel="noopener">core.js</a>.</figcaption>
+    </figure>
   </section>
 
   <!-- Why NetScope -->
-  <section class="landing-section">
-    <h2 class="landing-section-title">Why NetScope</h2>
-    <p class="landing-section-subtitle">Built for transparency, simplicity, and privacy</p>
+  <section class="landing-section" aria-labelledby="why-title">
+    <h2 class="landing-section-title" id="why-title">What you get</h2>
+    <p class="landing-section-subtitle">Each tool sends the least it can, and says exactly where it goes.</p>
     <div class="landing-grid">
       <div class="landing-card">
         <div class="card-icon card-icon--green">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
-        <h3>Privacy First</h3>
-        <p>Every test runs client-side in your browser. Passwords are hashed locally with SHA-1, only a 5-character prefix is ever transmitted. Zero analytics, zero tracking.</p>
+        <h3>Private by design</h3>
+        <p>The password generator, subnet calculator and JWT inspector make no network request at all. The other tools call public APIs directly from your browser. No analytics, no tracking.</p>
+      </div>
+      <div class="landing-card">
+        <div class="card-icon card-icon--cyan">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22" aria-hidden="true"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        </div>
+        <h3>A grade you can act on</h3>
+        <p>The domain scan checks SPF, DMARC, DKIM, DNSSEC, MTA-STS, TLS reporting and BIMI, gives a grade from A to F, and tells you how to fix each problem in plain language.</p>
       </div>
       <div class="landing-card">
         <div class="card-icon card-icon--blue">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
         </div>
-        <h3>Install or Open</h3>
-        <p>Use NetScope in any modern browser or install it as an app. The interface remains available offline on desktop and mobile.</p>
-      </div>
-      <div class="landing-card">
-        <div class="card-icon card-icon--purple">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" fill="currentColor" stroke="none"/></svg>
-        </div>
-        <h3>Open Source</h3>
-        <p>Every line of first-party code is on GitHub. Fork it, audit it, or contribute. Network tests clearly identify the third-party services they call.</p>
+        <h3>Install it or just open it</h3>
+        <p>NetScope works in any modern browser and installs as an app. The interface and the local tools keep working offline. Results export as text, email or PDF.</p>
       </div>
     </div>
   </section>
 
-  <!-- How It Works -->
-  <section class="landing-section">
-    <h2 class="landing-section-title">How It Works</h2>
-    <p class="landing-section-subtitle">Three steps to a full security snapshot</p>
-    <div class="steps-grid">
-      <div class="step-card">
-        <div class="step-number">1</div>
-        <h3>Launch the App</h3>
-        <p>Sign in with Google, GitHub, or email to sync results, or continue as a guest with full access to every tool.</p>
+  <!-- Proof -->
+  <section class="landing-section" aria-labelledby="proof-title">
+    <h2 class="landing-section-title" id="proof-title">Checked on every push</h2>
+    <p class="landing-section-subtitle">The privacy rules are tests, not promises. One command runs all of them, and CI runs the same command.</p>
+    <dl class="proof-grid">
+      <div class="proof-item">
+        <dt>138 unit tests</dt>
+        <dd>Hashing, DNS grading, subnet math, token decoding, speed test deadlines and the service worker, on Node's built-in test runner. <a href="https://github.com/patrickking67/netscope/tree/main/tests" target="_blank" rel="noopener">Read the tests</a></dd>
       </div>
-      <div class="step-card">
-        <div class="step-number">2</div>
-        <h3>Run Your Scans</h3>
-        <p>Check your IP, test your connection speed, scan for breaches, generate passwords, and audit DNS records, one click at a time or all at once.</p>
+      <div class="proof-item">
+        <dt>No inline script, anywhere</dt>
+        <dd>All three pages ship a Content-Security-Policy that forbids inline script and <code>eval</code>. The app page lists the exact API hosts it may contact, and a test fails if the code calls one that is not listed.</dd>
       </div>
-      <div class="step-card">
-        <div class="step-number">3</div>
-        <h3>Export or Save</h3>
-        <p>Copy results to clipboard, share via email, download a PDF report, or save to the cloud for access on any device.</p>
+      <div class="proof-item">
+        <dt>Pinned third-party code</dt>
+        <dd>Leaflet and jsPDF load with Subresource Integrity hashes, so a changed file on the CDN does not run.</dd>
       </div>
-    </div>
+      <div class="proof-item">
+        <dt>0 npm dependencies</dt>
+        <dd>Plain HTML, CSS and JavaScript with no build step. What is in the repository is what the browser runs. <a href="https://github.com/patrickking67/netscope/actions/workflows/ci.yml" target="_blank" rel="noopener">See the CI runs</a></dd>
+      </div>
+    </dl>
   </section>
 
   <!-- Final CTA -->
   <section class="landing-cta">
-    <h2 class="landing-section-title">Ready to scan?</h2>
-    <p class="landing-section-subtitle">Get a full security snapshot in under a minute</p>
+    <h2 class="landing-section-title">Try it on your own domain</h2>
+    <p class="landing-section-subtitle">No sign-up. Continue as a guest and every tool works.</p>
     <a href="pages/app.html" class="hero-cta">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-      Launch App
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18" aria-hidden="true"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      Launch app
     </a>
   </section>
   </main>
 
   <footer class="footer">
-    <p class="footer-copy">&copy; 2026 Patrick King &middot; Licensed under <a href="https://github.com/patrickking67/netscope/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a></p>
+    <p class="footer-copy">&copy; 2026 <a href="https://github.com/patrickking67" target="_blank" rel="noopener">Patrick King</a>. Licensed under <a href="https://github.com/patrickking67/netscope/blob/main/LICENSE" target="_blank" rel="noopener">MIT</a>.</p>
     <div class="footer-links">
       <a href="pages/app.html" class="footer-link">App</a>
       <a href="pages/about.html" class="footer-link">About</a>
+      <a href="https://github.com/patrickking67/netscope/blob/main/docs/architecture.md" target="_blank" rel="noopener" class="footer-link">Architecture</a>
+      <a href="https://github.com/patrickking67/netscope/blob/main/SECURITY.md" target="_blank" rel="noopener" class="footer-link">Security</a>
       <a href="https://github.com/patrickking67/netscope" target="_blank" rel="noopener" class="footer-link">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-        GitHub
+        <svg aria-hidden="true" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        Source
       </a>
     </div>
   </footer>
