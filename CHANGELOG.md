@@ -18,6 +18,8 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 - `.claude/launch.json` for the local preview on port 4102, `llms.txt`, CONTRIBUTING.md, this changelog, editor and git attribute files, CODEOWNERS, Dependabot, and issue and pull request templates.
 
 ### Changed
+- README rewritten around what the project proves: real screenshots, Mermaid diagrams of the k-anonymity exchange and the trust boundaries, a quality table, and links from each claim to its code and test. `docs/architecture.md` adds component, domain scan and service worker diagrams. The per-check privacy table moved to SECURITY.md.
+- The static check fails when a documented unit test count does not match the real one. `npm run coverage` prints coverage for `core.js`.
 - Landing page: a real screenshot of the app in the hero, a diagram of the k-anonymity password check, and a section listing what the checks enforce, with links to the tests and CI. The footer links the source, architecture notes, security policy and the author's profile.
 - New 1200x630 Open Graph image built from the real interface.
 - Service worker cache bumped to `netscope-shell-v5` for the new tools and landing page.

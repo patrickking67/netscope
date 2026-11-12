@@ -1,165 +1,170 @@
 <p align="center">
   <a href="https://patrickking67.github.io/netscope/">
-    <img src="assets/images/logo-light.svg" alt="NetScope" height="60">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="assets/images/logo-dark.svg">
+      <img src="assets/images/logo-light.svg" alt="NetScope" height="56">
+    </picture>
   </a>
 </p>
 
 <p align="center">
-  <strong>An installable, client-side network security toolkit.</strong><br>
-  Check your public IP and connection, test for breached credentials without giving them away, generate strong secrets, and grade a domain's DNS and email security. All from a static site with no backend.
+  A network security toolkit that runs entirely in the browser: seven tools on a static site with no backend, built so that secrets you type never reach a server.
 </p>
 
 <p align="center">
-  <a href="https://github.com/patrickking67/netscope/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/patrickking67/netscope/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=Tests" alt="Tests"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/github/license/patrickking67/netscope?style=for-the-badge&logo=opensourceinitiative&logoColor=white&color=10b981" alt="License"></a>
+  <a href="https://github.com/patrickking67/netscope/actions/workflows/ci.yml"><img src="https://github.com/patrickking67/netscope/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
+  <a href="tests/"><img src="https://img.shields.io/badge/tests-138_passing-brightgreen" alt="138 unit tests passing"></a>
+  <a href="https://patrickking67.github.io/netscope/"><img src="https://img.shields.io/badge/demo-live-2563eb" alt="Live demo"></a>
 </p>
 
-<p align="center"><strong>Live:</strong> <a href="https://patrickking67.github.io/netscope/">patrickking67.github.io/netscope</a></p>
-
 <p align="center">
-  <a href="https://patrickking67.github.io/netscope/">
-    <img src="assets/images/social-preview.png" alt="NetScope screenshot" width="720">
+  <a href="https://patrickking67.github.io/netscope/pages/app.html">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/assets/app-scan-dark.webp">
+      <img src="docs/assets/app-scan-light.webp" alt="NetScope scanning example.com: grade A with a score of 100, then the DNS records and email security checks" width="860">
+    </picture>
   </a>
 </p>
 
----
+## Try it
 
-## Why it exists
-
-Most "check my connection" and "have I been breached" sites ask you to trust a server with exactly the data you are worried about. NetScope runs in your browser and talks only to the public APIs each check needs, sending the minimum each one requires. Passwords are hashed locally and only a 5-character hash prefix leaves the page.
-
-It is plain HTML, CSS and JavaScript. The repository root is the deployed site: no framework, no bundler, no `node_modules`.
-
-## Tools
-
-The app (`pages/app.html`) has five tools plus a one-click Full Scan.
-
-| Tool | What it checks | Service used |
-| --- | --- | --- |
-| **IP & Location** | Public IP, ISP, organization, ASN, IP version, proxy and hosting flags (when the provider reports them), approximate location on a map | ipify, seeip (IP); ipapi.co, ipwho.is, freeipapi.com (geolocation, tried in order); OpenStreetMap tiles |
-| **Speed Test** | Ping and jitter (20 samples, outliers trimmed), then 12-second multi-connection download and upload with a 2-second warm-up. Every request has a deadline and the test can be cancelled; a stalled or cancelled run keeps the results measured so far | Cloudflare speed endpoints |
-| **Breach Check: email** | Whether an address appears in known breaches, with the breach names | XposedOrNot |
-| **Breach Check: password** | How many times a password appears in breach corpora, using k-anonymity | Have I Been Pwned Pwned Passwords |
-| **Password Generator** | Random passwords, PINs, hex keys and 5-word passphrases, with strength computed from the generator's real entropy | None (Web Crypto) |
-| **DNS & Security** | A, AAAA, MX and NS records (null MX recognized); SPF (missing, duplicate, `+all`, `?all`); DMARC policy and partial `pct=`; DKIM at 18 common selectors; DNSSEC validation; MTA-STS; SMTP TLS reporting; BIMI; WebRTC local address and VPN leak check; whether the page is on HTTPS. One overall verdict, and a plain-language explanation under each check | Google DNS-over-HTTPS; Google STUN |
-
-**Full Scan** runs IP, speed, email breach (if an address is entered or you are signed in) and DNS (if a domain is entered) in sequence. Results, including the scan verdict and the email breach result, can be copied, emailed, or downloaded as a PDF (jsPDF). A password check adds only whether the password was found in a breach and an estimated strength score from 1 to 5; the password, its hash and the breach count are never exported. Optional sign-in (Google, GitHub or email via Firebase) adds cloud save of results and theme sync. Every tool works without an account.
-
-## Privacy model
-
-What each check sends, and to whom:
-
-| Check | Leaves your browser | Never leaves your browser |
-| --- | --- | --- |
-| Password breach | The first 5 hex characters of the SHA-1 hash, sent to `api.pwnedpasswords.com/range/{prefix}` with `Add-Padding: true` so the response size does not hint at the result | The password, the full hash, the 35-character suffix used for matching |
-| Email breach | The email address, sent to XposedOrNot (that is how their lookup works) | Nothing is stored by NetScope |
-| IP & Location | Your IP reaches each provider as part of the request; the geolocation providers also receive it in the URL | |
-| DNS scan | The domain name, sent to `dns.google` | |
-| WebRTC check | A STUN request to `stun.l.google.com` | Local candidates are inspected in the page and only shown to you |
-| Speed test | Random test payloads to and from Cloudflare | |
-| Password generator | Nothing | Everything |
-
-Other guarantees, each backed by code and tests:
-
-- **Failed lookups are never reported as safe.** A rate-limited or failed breach lookup shows an error, not "no breaches found". A DNS lookup that fails says "could not look up", and a domain that does not exist says so instead of being graded.
-- **Nothing hangs forever.** IP, breach and DNS requests time out after 10 seconds and show an error.
-- **No telemetry.** No analytics, tracking pixels or third-party cookies.
-- **Strict Content-Security-Policy.** Every page forbids inline scripts, `eval`, plugins and `<base>` changes, and the app page lists the exact API hosts it may contact. Leaflet and jsPDF are pinned with Subresource Integrity hashes.
-- **The service worker never caches API responses.** It only stores same-origin files inside its own scope, so breach, IP and DNS results are never written to disk by the PWA.
-- **Cloud save is opt-in.** If you sign in and press Save, the results (IP, city, country, ISP and coordinates, speed, scanned domain and checks, and the checked email address with its breach count) are written to `users/{uid}/results` in Firestore. Passwords are never saved or exported. The Firebase SDK is loaded from Google's CDN on the app page even for guests.
-
-See [SECURITY.md](SECURITY.md) to report a vulnerability.
-
-## Run it locally
-
-No install step. You need Python 3, and Node.js 22 or newer for the checks.
+**Live:** [patrickking67.github.io/netscope](https://patrickking67.github.io/netscope/) (choose "Continue as guest"; every tool works without an account).
 
 ```bash
 git clone https://github.com/patrickking67/netscope.git
 cd netscope
-npm run serve        # python3 -m http.server 4102 --directory .
-# open http://localhost:4102
+npm run check   # static checks, text lint and 138 unit tests. Nothing to install.
+npm run serve   # http://localhost:4102
 ```
 
-The same server is defined in `.claude/launch.json` for the Claude desktop preview.
+You need Python 3 and Node.js 22 or newer. There is no install step and no build step.
 
-Serve over HTTP rather than opening `index.html` from disk. Service workers and some browser APIs do not work on `file://` URLs.
+## The tools
 
-## Install as an app (PWA)
+| Tool | What it does | Where data goes |
+| --- | --- | --- |
+| IP and location | Public IP, ISP, ASN, proxy and hosting flags, map | ipify or seeip, then ipapi.co, ipwho.is or freeipapi.com (tried in order); OpenStreetMap tiles |
+| Speed test | Ping, jitter, multi-connection download and upload, with deadlines and a cancel button | Cloudflare speed endpoints |
+| Breach check | Email breach lookup; password lookup with k-anonymity | XposedOrNot (email); Have I Been Pwned (5-character hash prefix only) |
+| Password generator | Passwords, PINs, hex keys and passphrases with real entropy figures | Nowhere (Web Crypto) |
+| DNS and email security | SPF, DMARC, DKIM, DNSSEC, MTA-STS, TLS-RPT, BIMI, graded A to F with a fix for each problem | Google DNS-over-HTTPS; a STUN request for the WebRTC leak check |
+| Subnet calculator | Network, mask, usable range and size for IPv4 and IPv6 | Nowhere |
+| JWT inspector | Decodes a token and flags `alg: none`, missing expiry, key hints and more | Nowhere. The token is never stored or exported |
 
-NetScope ships a web app manifest and a service worker that caches the app shell.
+Full Scan runs the network tools in sequence. Results export as text, email or PDF. Optional sign-in (Firebase) adds cloud save.
 
-- **Chrome or Edge (desktop):** open the [live site](https://patrickking67.github.io/netscope/pages/app.html) and use the install icon in the address bar or the browser menu's install option.
-- **Android (Chrome):** menu, then **Add to Home screen** or **Install app**.
-- **iOS and iPadOS (Safari):** Share, then **Add to Home Screen**.
-- **macOS (Safari 17+):** File, then **Add to Dock**.
+<p align="center">
+  <img src="docs/assets/app-jwt-dark.webp" alt="The JWT inspector decoding a sample token: validity window, findings about the algorithm, expiry and signature, and the decoded claims" width="620">
+  <img src="docs/assets/app-subnet-mobile.webp" alt="The subnet calculator on a phone showing network, mask, broadcast, usable range and host count for 10.20.30.40/20" width="215">
+</p>
 
-Once installed, the interface opens offline. The checks themselves need a network connection.
+## What is technically interesting here
 
-## Tests
+- **The password never leaves the page, and a test proves it.** The password is hashed with SHA-1 locally and only the first 5 of 40 hex characters are sent. A recording `fetch` asserts that the password, the full hash and the suffix appear nowhere in the request. Code: [`checkPwnedPassword`](assets/js/core.js#L78). Test: [`tests/core.test.js`](tests/core.test.js#L100).
+- **Network logic is pure and takes `fetch` as an argument.** [`core.js`](assets/js/core.js) has no DOM access and is loaded by the browser with a plain `<script>` and by Node with `require()`, so there is no build step and no mocking library. The domain scan runs against a fake resolver in tests: [`scanDomain`](assets/js/core.js#L429).
+- **A failed lookup is never reported as a clean result.** Rate limits, timeouts and DNS errors surface as errors, a domain that does not exist is not graded, and a check that could not be looked up marks the grade incomplete instead of lowering it. Code: [`gradeChecks`](assets/js/core.js#L408). Tests: [scan failure cases](tests/core.test.js#L790).
+- **The Content-Security-Policy is enforced by tests.** No page allows inline script or `eval`. A test extracts every `https://` origin the code calls and fails if one is missing from `connect-src`; another fails on any third-party script without an SRI hash. Tests: [`tests/pages.test.js`](tests/pages.test.js).
+- **The speed test cannot hang.** Each phase has a hard deadline built on `AbortController`, a cancel signal chained to it, and partial results that survive a stall. Tested with a fake clock and fake transfers. Code: [`createDeadline`](assets/js/core.js#L761), [`runTransferPhase`](assets/js/core.js#L848). Tests: [stall and cancel cases](tests/core.test.js#L536).
+- **The service worker never caches an API response.** It handles only same-origin GET requests inside its own scope, so breach, IP and DNS results are never written to disk. It is loaded in a `vm` sandbox and tested: [`sw.js`](sw.js#L31), [`tests/service-worker.test.js`](tests/service-worker.test.js).
 
-Unit tests use Node's built-in test runner. No dependencies to install; Node 22 or newer.
+## Architecture
 
-```bash
-npm run check         # everything below, in one command
-npm test              # 96 unit tests
-npm run check:static  # asset links, JS syntax, PWA files, required docs, llms.txt, launch.json, no em dashes or emoji
+The k-anonymity exchange for a password check:
+
+```mermaid
+sequenceDiagram
+    actor User
+    participant Page as Browser (core.js)
+    participant HIBP as api.pwnedpasswords.com
+    User->>Page: types a password
+    Page->>Page: SHA-1 with Web Crypto (40 hex characters)
+    Page->>Page: split into 5-character prefix and 35-character suffix
+    Page->>HIBP: GET /range/{prefix} with Add-Padding: true
+    Note over Page,HIBP: Only the prefix crosses the network
+    HIBP-->>Page: every suffix under that prefix, with counts, padded
+    Page->>Page: look for the suffix in the list
+    Page-->>User: found N times, or not found
+    Note over Page: The report keeps only found or not found and a strength score
 ```
 
-What is covered:
+Trust boundaries. Everything inside the browser box is first-party code served from GitHub Pages. Each arrow that leaves it is labeled with the data that crosses.
 
-- **k-anonymity:** with a recording `fetch`, asserts only the 5-character prefix is sent and the password, full hash and suffix never appear in the request; HTTP errors throw instead of returning zero.
-- **Password report:** the export shows breach found or not and a strength score, and never the password, its full hash, the hash prefix or the breach count, even if extra fields end up in state.
-- **Breach parsing:** both XposedOrNot response shapes, 404 as clean, 429 and 5xx as errors, the network fallback.
-- **DNS grading:** domain input normalization, quoted TXT joining, SPF and DMARC edge cases (including `sp=` not being mistaken for `p=` and partial `pct=`), revoked DKIM keys, MTA-STS, TLS-RPT, BIMI, null MX, and `scanDomain` against a fake resolver for NXDOMAIN, total failure and single failed lookups.
-- **Timeouts:** `fetchWithTimeout` aborts a request that never answers and leaves ordinary errors alone.
-- **WebRTC:** candidate parsing, private ranges, and not flagging the normal STUN public address as a leak.
-- **Generator:** rejection sampling (no modulo bias), entropy from pool size or word list size.
-- **Speed math:** latency trimming and time-ordered jitter, throughput after warm-up.
-- **Speed timing:** with a fake clock and fake transfers, a stalled phase ends at its hard deadline, a cancel stops at once, completed transfers survive as a partial result, and lost pings are skipped.
-- **Service worker:** loaded in a `vm` sandbox to check scope limits, error responses not cached, offline fallback, stale-while-revalidate, and that every page script is in the app shell.
-- **Pages:** CSP present and strict on every page, no inline scripts or handlers, SRI on CDN scripts, every API host the code calls is in `connect-src`, skip link and `<main>` on every page, ARIA tabs, live result regions, named icon buttons, and no untimed third-party `fetch`.
+```mermaid
+flowchart LR
+    subgraph browser["Your browser (trusted, first-party code)"]
+        local["Local tools: generator, subnet, JWT. No requests"]
+        app["app.js and core.js"]
+        sw["Service worker: same-origin shell cache"]
+    end
+    app -- "domain name" --> doh["DNS-over-HTTPS resolver (dns.google)"]
+    app -- "5-character hash prefix" --> hibp["Breach API (Have I Been Pwned)"]
+    app -- "email address" --> xon["Email breach API (XposedOrNot)"]
+    app -- "request reveals your IP" --> ip["IP and geolocation providers"]
+    app -- "random test payloads" --> cf["Cloudflare speed endpoints"]
+    app -. "opt-in: saved results, never passwords or tokens" .-> fb["Firebase Auth and Firestore"]
+    sw -- "GET app shell only" --> pages["GitHub Pages (same origin)"]
+```
 
-CI runs `npm run check` on every push and pull request ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
+More diagrams (components, the domain scan pipeline, the service worker decision) are in [docs/architecture.md](docs/architecture.md).
+
+## Quality signals
+
+| Signal | Current state |
+| --- | --- |
+| Unit tests | 138 unit tests on Node's built-in runner, no test dependencies |
+| Coverage of `core.js` | 99% of lines, 89% of branches (`npm run coverage`). `app.js` is DOM wiring and is checked in a browser, not unit tested |
+| CI | `npm run check` on every push and pull request, Ubuntu, Node 24, read-only token ([ci.yml](.github/workflows/ci.yml)) |
+| Security checks | Tests for CSP on all 3 pages, no inline script or handlers, SRI on CDN scripts, `connect-src` allowlist, no third-party request without a timeout |
+| Accessibility checks | Tests for skip link and `<main>` on every page, ARIA tabs, live result regions and names on icon-only controls. Contrast, focus rings and 375px layout were checked by hand |
+| Docs lint | The check fails if a documented test count is stale, a local asset link is broken, or committed text contains an em dash or emoji |
+| Dependencies | 0 npm packages. Leaflet, jsPDF and the Firebase SDK load from CDNs at runtime |
+
+## Privacy model
+
+- Passwords: only the 5-character SHA-1 prefix is sent. The password, hash and breach count are never stored or exported.
+- JWTs: decoded in the page. The token and its claims are never sent, stored or exported; the report keeps the algorithm, status and finding names.
+- Email breach checks send the address to XposedOrNot, because that is how the lookup works.
+- No analytics, tracking pixels or third-party cookies.
+- Cloud save is opt-in and writes only the listed result fields to `users/{uid}/results` in Firestore.
+
+The per-check detail and the vulnerability reporting process are in [SECURITY.md](SECURITY.md).
 
 ## Project layout
 
 ```
-index.html                  Landing page
-pages/app.html              The toolkit
-pages/about.html            About and privacy summary
-assets/js/core.js           Pure logic: hashing, parsing, grading, entropy, speed math (unit tested)
-assets/js/app.js            DOM wiring, network calls, rendering
-assets/js/auth.js           Optional Firebase sign-in and saved-results panel
-assets/js/firestore.js      Optional cloud save and preferences
-assets/js/firebase-config.js  Public Firebase web config
-assets/js/theme-init.js     Applies the saved theme before first paint
-assets/js/site.js           Landing and about page interactions
-assets/js/pwa.js            Service worker registration
-sw.js                       Service worker (app shell cache)
-manifest.webmanifest        PWA manifest
-tests/                      node:test suites
-scripts/check-static-site.py  Static validation used in CI and deploy
-docs/                       Architecture notes and Firebase setup
-llms.txt                    Summary for language models, served at /netscope/llms.txt
-.claude/launch.json         Local preview config (port 4102)
+index.html, pages/app.html, pages/about.html   The three pages, each with its own CSP
+assets/js/core.js        Pure logic: hashing, parsing, grading, subnet math, JWT decoding, speed math
+assets/js/app.js         DOM wiring, network calls, rendering
+assets/js/auth.js, firestore.js, firebase-config.js   Optional sign-in and cloud save
+sw.js, manifest.webmanifest   PWA shell cache and manifest
+tests/                   core, pages and service worker suites
+scripts/check-static-site.py   Static validation and docs lint
+docs/                    Architecture notes, screenshots, Firebase setup
 ```
 
-See [AGENTS.md](AGENTS.md) for the agent guide and [CONTRIBUTING.md](CONTRIBUTING.md) for branch and commit conventions. Changes are listed in [CHANGELOG.md](CHANGELOG.md).
+## Checks
 
-`core.js` is a classic script that also exports through `module.exports`, so the browser loads it with a normal `<script>` tag and Node tests `require()` it without a build step.
+```bash
+npm run check         # everything: static check, docs and text lint, unit tests
+npm test              # unit tests only
+npm run coverage      # unit tests with a coverage report for core.js
+```
 
-## Deployment
+## Deploy
 
-Pushes to `main` deploy to GitHub Pages through [`.github/workflows/static.yml`](.github/workflows/static.yml), which runs the static checks first. To deploy a fork, set **Settings > Pages > Source** to **GitHub Actions** and push to `main`.
+Pushes to `main` deploy to GitHub Pages through [static.yml](.github/workflows/static.yml), which runs the static check first. The repository root is the published site. To deploy a fork, set Pages to "GitHub Actions" and push. Firebase is optional: see [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md).
 
-Firebase is optional. To use your own project, follow [docs/FIREBASE_SETUP.md](docs/FIREBASE_SETUP.md), then update the `frame-src` host in the CSP in `pages/app.html` to your `authDomain`.
+NetScope installs as an app from the browser's install prompt. The interface and the three local tools work offline; the network tools need a connection.
 
-## Credits
+## More
 
-- [Have I Been Pwned](https://haveibeenpwned.com) for the Pwned Passwords range API.
-- [XposedOrNot](https://xposedornot.com) for the free email breach API.
-- [Ookla Speedtest](https://www.speedtest.net) inspired the multi-connection test and gauge.
+- [AGENTS.md](AGENTS.md): commands, layout and rules for coding agents
+- [CONTRIBUTING.md](CONTRIBUTING.md): branch names, commit style and the PR checklist
+- [SECURITY.md](SECURITY.md): security model and private reporting
+- [CHANGELOG.md](CHANGELOG.md): what changed and when
+
+Credits: [Have I Been Pwned](https://haveibeenpwned.com) for the range API, [XposedOrNot](https://xposedornot.com) for the email breach API.
 
 ## License
 

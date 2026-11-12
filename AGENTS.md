@@ -8,6 +8,7 @@ NetScope is a client-side network security toolkit: static HTML, CSS and vanilla
 | --- | --- | --- |
 | Full check | `npm run check` | Static site check, docs and text lint, then all unit tests. Run before every commit. |
 | Unit tests only | `npm test` | node:test, Node 22+ |
+| Coverage | `npm run coverage` | Unit tests with a coverage report for `core.js` |
 | Static check only | `npm run check:static` | Same as `python3 scripts/check-static-site.py`; also runs in the deploy workflow |
 | Preview | `npm run serve` | http://localhost:4102. Same server as `.claude/launch.json` (`netscope-site`). |
 
@@ -25,7 +26,9 @@ assets/css/style.css     All styles. Tokens at the top; light theme under [data-
 sw.js                    Service worker. APP_SHELL list and CACHE_NAME
 manifest.webmanifest     PWA manifest
 tests/                   core.test.js, pages.test.js, service-worker.test.js
-scripts/check-static-site.py   Asset links, JS syntax, required docs, llms.txt, launch.json, text lint
+scripts/check-static-site.py   Asset links, JS syntax, required docs, llms.txt, launch.json, documented test counts, text lint
+docs/architecture.md     Diagrams: components, trust boundaries, k-anonymity, domain scan, service worker
+docs/assets/             README and landing page screenshots (WebP, under 300 KB each)
 llms.txt                 Served at https://patrickking67.github.io/netscope/llms.txt
 .claude/launch.json      Preview config (port 4102). The only tracked file under .claude/
 ```
@@ -43,6 +46,8 @@ llms.txt                 Served at https://patrickking67.github.io/netscope/llms
 
 - Content-Security-Policy: no inline scripts, no inline event handlers, no `javascript:` URLs. A new external origin must be added to the page's CSP on purpose (for the app, `connect-src` in `pages/app.html`) and called out in the PR. Tests check this.
 - Passwords: only the 5-character SHA-1 prefix leaves the browser. Never store, log or export a password or full hash.
+- The subnet calculator and JWT inspector make no network request and use no storage. A token and its claims are never stored, logged or exported; only `Core.jwtReportSummary` output goes into `state`. Tests check this.
+- The unit test count is written in `README.md` (text and badge), `index.html` and `llms.txt`. When you add or remove a test, update those numbers; the static check fails until they match.
 - No analytics or telemetry.
 - When you change any file listed in `APP_SHELL`, bump `CACHE_NAME` in `sw.js`.
 - Do not test Firebase sign-in with real credentials. The Firebase web config is public by design; do not add other keys.

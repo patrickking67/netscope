@@ -2,7 +2,7 @@
   "name": "netscope",
   "version": "1.0.0",
   "private": true,
-  "description": "Installable, client-side network security toolkit: IP and geolocation, speed test, k-anonymity breach checks, password generator and DNS email-security scan.",
+  "description": "Installable, client-side network security toolkit: IP and geolocation, speed test, k-anonymity breach checks, password generator, graded DNS and email security scan, subnet calculator and JWT inspector.",
   "license": "MIT",
   "author": "Patrick King",
   "repository": {
@@ -16,6 +16,7 @@
     "test": "node --test \"tests/**/*.test.js\"",
     "check": "python3 scripts/check-static-site.py && npm test",
     "check:static": "python3 scripts/check-static-site.py",
+    "coverage": "node --test --experimental-test-coverage \"tests/**/*.test.js\"",
     "serve": "python3 -m http.server 4102 --directory ."
   }
 }
