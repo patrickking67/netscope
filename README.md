@@ -49,7 +49,7 @@ You need Python 3 and Node.js 22 or newer. There is no install step and no build
 | Breach check | Email breach lookup; password lookup with k-anonymity | XposedOrNot (email); Have I Been Pwned (5-character hash prefix only) |
 | Password generator | Passwords, PINs, hex keys and passphrases with real entropy figures | Nowhere (Web Crypto) |
 | DNS and email security | SPF, DMARC, DKIM, DNSSEC, MTA-STS, TLS-RPT, BIMI, graded A to F with a fix for each problem | Google DNS-over-HTTPS; a STUN request for the WebRTC leak check |
-| Subnet calculator | Network, mask, usable range and size for IPv4 and IPv6 | Nowhere |
+| Subnet calculator | Network, mask, usable range and size for IPv4 and IPv6, a contains-or-overlaps check against an address or subnet, and a split into smaller subnets | Nowhere |
 | JWT inspector | Decodes a token and flags `alg: none`, missing expiry, key hints and more | Nowhere. The token is never stored or exported |
 
 Full Scan runs the network tools in sequence. Results export as text, email or PDF. Optional sign-in (Firebase) adds cloud save.
