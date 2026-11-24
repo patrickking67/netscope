@@ -35,6 +35,7 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 - Scanning a domain that does not exist now says so instead of grading missing SPF and DMARC as failures.
 - A failed DNS lookup is reported as "could not look up" instead of "no record found".
 - Password generator options were unreachable by keyboard.
+- The freeipapi.com location fallback was blocked by the Content-Security-Policy because that API now redirects to free.freeipapi.com. The app calls the new host and the CSP allows it.
 
 ## 2026-11-07
 

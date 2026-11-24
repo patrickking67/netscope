@@ -241,7 +241,7 @@ async function fetchIPInfo() {
   const geoApis = [
     { url: `https://ipapi.co/${encodeURIComponent(ip)}/json/`, parse: Core.parseIpapiCo },
     { url: `https://ipwho.is/${encodeURIComponent(ip)}`, parse: Core.parseIpwhois },
-    { url: `https://freeipapi.com/api/json/${encodeURIComponent(ip)}`, parse: Core.parseFreeipapi },
+    { url: `https://free.freeipapi.com/api/v1/json/${encodeURIComponent(ip)}`, parse: Core.parseFreeipapi },
   ];
   for (const api of geoApis) {
     try {
