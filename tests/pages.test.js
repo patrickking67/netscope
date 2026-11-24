@@ -82,6 +82,13 @@ test('app CSP allows every API host the code calls', () => {
   }
 });
 
+test('geolocation endpoints are the current hosts, not ones that redirect off the CSP allowlist', () => {
+  // freeipapi.com/api/json answers 307 to free.freeipapi.com, and connect-src applies to redirects.
+  const app = read('assets/js/app.js');
+  assert.ok(!app.includes('https://freeipapi.com/'), 'use https://free.freeipapi.com/api/v1/json');
+  assert.ok(csp(read('pages/app.html'))['connect-src'].includes('https://free.freeipapi.com'));
+});
+
 test('app.html loads core.js before the scripts that depend on it', () => {
   const html = read('pages/app.html');
   const order = [...html.matchAll(/<script[^>]+src="([^"]+)"/g)].map((m) => m[1]);

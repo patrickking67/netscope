@@ -1248,7 +1248,8 @@
     }
 
     const claims = [];
-    const times = {};
+    // Claim names come from the token, so keep lookups off the prototype chain ("constructor", "__proto__").
+    const times = Object.create(null);
     for (const key of ['exp', 'nbf', 'iat']) {
       if (!(key in payload)) continue;
       const raw = payload[key];
@@ -1285,7 +1286,7 @@
     for (const [key, value] of Object.entries(payload)) {
       let shown = typeof value === 'string' ? value : JSON.stringify(value);
       if (key in times) shown = `${new Date(times[key]).toISOString()} (${value})`;
-      claims.push({ key, label: JWT_CLAIM_NAMES[key] || key, value: shown });
+      claims.push({ key, label: Object.hasOwn(JWT_CLAIM_NAMES, key) ? JWT_CLAIM_NAMES[key] : key, value: shown });
     }
     return { ok: true, header, payload, algorithm: algorithm || 'missing', status, claims, findings, signatureLength };
   }

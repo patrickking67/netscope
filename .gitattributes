@@ -9,3 +9,7 @@
 *.woff binary
 *.woff2 binary
 *.pdf binary
+
+# Keep the language bar about the app, not its docs and screenshots
+docs/** linguist-documentation
+llms.txt linguist-documentation
