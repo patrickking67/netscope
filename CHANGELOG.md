@@ -5,6 +5,7 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 ## [Unreleased]
 
 ### Added
+- Subnet calculator: optional "compare with" field (is an address or subnet inside, around, the same as or apart from this one) and optional "split into /N" field that lists the smaller subnets (first 256 shown, with the real total). Both run in the page.
 - Subnet calculator: network, mask, wildcard, broadcast, usable range, size and address type for IPv4 (prefix or dotted mask, /31 and /32 handled) and IPv6 (BigInt math, RFC 5952 text). Runs in the page with no network request and is included in the exported report.
 - JWT inspector: decodes a token's header and payload in the page and flags `alg: none`, a missing or empty signature, shared-secret algorithms, key hints in the header, missing or passed expiry, and long lifetimes. The token is never sent, saved or exported; the report keeps only the algorithm, status and finding names. The signature is not verified.
 - Tool tabs have accessible names when they collapse to icons on phones.

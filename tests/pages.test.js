@@ -130,7 +130,7 @@ test('app result regions announce updates and icon-only controls have names', ()
   for (const id of ['toggle-password', 'pwgen-copy', 'export-trigger', 'btn-full-scan']) {
     assert.match(html, new RegExp(`id="${id}"[^>]*aria-label="[^"]+"`), id);
   }
-  for (const id of ['email-input', 'password-input', 'scan-input', 'subnet-input', 'jwt-input']) {
+  for (const id of ['email-input', 'password-input', 'scan-input', 'subnet-input', 'subnet-compare', 'subnet-split', 'jwt-input']) {
     assert.match(html, new RegExp(`id="${id}"[^>]*aria-label="[^"]+"`), id);
   }
 });
