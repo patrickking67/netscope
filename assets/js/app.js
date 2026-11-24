@@ -782,7 +782,9 @@ const JWT_EMPTY = 'Paste a token and press Decode, or press Ctrl or Command with
 
 function initLocalTools() {
   document.getElementById('btn-subnet').addEventListener('click', runSubnetCalc);
-  document.getElementById('subnet-input').addEventListener('keydown', e => { if (e.key === 'Enter') runSubnetCalc(); });
+  for (const id of ['subnet-input', 'subnet-compare', 'subnet-split']) {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') runSubnetCalc(); });
+  }
   document.getElementById('btn-jwt').addEventListener('click', runJwtInspect);
   document.getElementById('btn-jwt-sample').addEventListener('click', loadSampleJwt);
   document.getElementById('btn-jwt-clear').addEventListener('click', clearJwt);
@@ -817,7 +819,31 @@ function runSubnetCalc() {
       </div>
     </div>
     ${rowsHtml(result.rows)}
-    ${result.note ? statusHtml(result.note, 'empty') : ''}`;
+    ${result.note ? statusHtml(result.note, 'empty') : ''}
+    ${subnetExtrasHtml(raw)}`;
+}
+
+/** Optional compare and split output under the main subnet result. */
+function subnetExtrasHtml(raw) {
+  let html = '';
+  const compare = document.getElementById('subnet-compare').value;
+  if (compare.trim()) {
+    const rel = Core.compareSubnets(raw, compare);
+    html += rel.ok
+      ? statusHtml(`${rel.message}.`, rel.relation === 'disjoint' ? 'warn' : 'empty')
+      : statusHtml(`Compare: ${rel.error}.`, 'error');
+  }
+  const split = document.getElementById('subnet-split').value.replace(/^\//, '');
+  if (split.trim()) {
+    const parts = Core.splitSubnet(raw, split);
+    if (!parts.ok) {
+      html += statusHtml(`Split: ${parts.error}.`, 'error');
+    } else {
+      const more = parts.truncated ? `Showing the first ${parts.cidrs.length} of ${parts.total}.` : '';
+      html += `<h3 class="card-subtitle">${esc(parts.total)} subnets</h3>${more ? statusHtml(more, 'empty') : ''}<ul class="kv-grid kv-list">${parts.cidrs.map(c => `<li class="kv-item"><code>${esc(c)}</code></li>`).join('')}</ul>`;
+    }
+  }
+  return html;
 }
 
 const JWT_STATUS_VERDICT = { active: 'good', expired: 'needs-attention', 'not-yet-valid': 'needs-attention', 'no-expiry': 'needs-attention' };

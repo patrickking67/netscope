@@ -1160,6 +1160,74 @@
     return { ok: true, version: 6, address: bigIntToIpv6(value), prefix, cidr, rows, note };
   }
 
+  /** Start, end (inclusive) and prefix of a calculated subnet as BigInt, for comparing and splitting. */
+  function subnetBounds(result) {
+    const network = result.version === 4 ? BigInt(ipv4ToInt(result.cidr.split('/')[0])) : ipv6ToBigInt(result.cidr.split('/')[0]);
+    const bits = result.version === 4 ? 32 : 128;
+    return { bits, prefix: result.prefix, start: network, end: network + (1n << BigInt(bits - result.prefix)) - 1n };
+  }
+
+  /** Add a full-length prefix to a bare address so "10.0.0.5" can be compared as a /32. */
+  function withHostPrefix(text) {
+    const t = String(text == null ? '' : text).trim();
+    if (!t || /[\/\s]/.test(t)) return t;
+    return `${t}/${t.includes(':') ? 128 : 32}`;
+  }
+
+  /**
+   * How two subnets relate. B may be a bare address (a /32 or /128).
+   * Returns { ok: false, error } or { ok: true, relation, message } where relation is
+   * 'same', 'contains' (A holds all of B), 'inside' (B holds all of A) or 'disjoint'.
+   */
+  function compareSubnets(a, b) {
+    const first = calculateSubnet(a);
+    if (!first.ok) return first;
+    const second = calculateSubnet(withHostPrefix(b));
+    if (!second.ok) return second;
+    if (first.version !== second.version) return { ok: false, error: 'Compare two IPv4 values or two IPv6 values, not one of each' };
+    const x = subnetBounds(first);
+    const y = subnetBounds(second);
+    let relation = 'disjoint';
+    if (x.start === y.start && x.end === y.end) relation = 'same';
+    else if (x.start <= y.start && x.end >= y.end) relation = 'contains';
+    else if (y.start <= x.start && y.end >= x.end) relation = 'inside';
+    const message = {
+      same: `${first.cidr} and ${second.cidr} are the same subnet`,
+      contains: `${first.cidr} contains ${second.cidr}`,
+      inside: `${first.cidr} is inside ${second.cidr}`,
+      disjoint: `${first.cidr} and ${second.cidr} do not overlap`,
+    }[relation];
+    return { ok: true, relation, message };
+  }
+
+  const SPLIT_LIMIT = 256;
+
+  /**
+   * Divide a subnet into equal smaller ones with the given prefix length.
+   * Returns { ok: false, error } or { ok: true, cidrs, total, truncated }.
+   * At most SPLIT_LIMIT subnets are listed; total is the real count as text.
+   */
+  function splitSubnet(input, newPrefix) {
+    const base = calculateSubnet(input);
+    if (!base.ok) return base;
+    const bits = base.version === 4 ? 32 : 128;
+    const text = String(newPrefix == null ? '' : newPrefix).trim();
+    if (!/^\d{1,3}$/.test(text)) return { ok: false, error: 'Enter the new prefix length as a whole number, for example 26' };
+    const target = Number(text);
+    if (target > bits) return { ok: false, error: `The new prefix cannot be longer than /${bits}` };
+    if (target <= base.prefix) return { ok: false, error: `The new prefix must be longer than /${base.prefix} to split ${base.cidr}` };
+    const { start } = subnetBounds(base);
+    const count = 1n << BigInt(target - base.prefix);
+    const step = 1n << BigInt(bits - target);
+    const shown = count > BigInt(SPLIT_LIMIT) ? SPLIT_LIMIT : Number(count);
+    const cidrs = [];
+    for (let i = 0; i < shown; i++) {
+      const net = start + BigInt(i) * step;
+      cidrs.push(`${base.version === 4 ? intToIpv4(Number(net)) : bigIntToIpv6(net)}/${target}`);
+    }
+    return { ok: true, cidrs, total: formatCount(count, target - base.prefix), truncated: count > BigInt(SPLIT_LIMIT) };
+  }
+
   // ============================================================
   // JWT INSPECTOR (local only: the token is never sent, stored or exported)
   // ============================================================
@@ -1402,7 +1470,7 @@
     summarizeLatency, throughputMbps, gaugeDashOffset, GAUGE_CIRCUMFERENCE,
     speedAbortReason, abortKind, createDeadline, raceAbort, measureLatency, runTransferPhase, summarizeSpeedRun,
     parseIpapiCo, parseIpwhois, parseFreeipapi, countryFlag,
-    calculateSubnet, ipv6ToBigInt, bigIntToIpv6, maskToPrefix,
+    calculateSubnet, compareSubnets, splitSubnet, SPLIT_LIMIT, ipv6ToBigInt, bigIntToIpv6, maskToPrefix,
     inspectJwt, jwtReportSummary, describeDuration, JWT_STATUS_LABELS,
     buildTextReport,
   };

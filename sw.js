@@ -1,5 +1,5 @@
 // Bump the version whenever APP_SHELL or caching behavior changes.
-const CACHE_NAME = "netscope-shell-v7";
+const CACHE_NAME = "netscope-shell-v8";
 const APP_SHELL = [
   "./",
   "./index.html",

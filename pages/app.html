@@ -446,7 +446,11 @@
             <input type="text" id="subnet-input" class="input-field input-field--mono" aria-label="Address with prefix length or subnet mask" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="192.168.1.10/24">
             <button type="button" class="btn btn--primary" id="btn-subnet">Calculate</button>
           </div>
-          <p class="input-hint">Try <strong>192.168.1.10/24</strong>, <strong>10.0.0.1 255.255.252.0</strong> or <strong>2001:db8::/48</strong>. Calculated in this page. Nothing is sent anywhere.</p>
+          <div class="input-row">
+            <input type="text" id="subnet-compare" class="input-field input-field--mono" aria-label="Optional: another address or subnet to compare with" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Compare with 10.0.0.5 or 10.0.0.0/8 (optional)">
+            <input type="text" id="subnet-split" class="input-field input-field--mono" aria-label="Optional: split into subnets with this prefix length" inputmode="numeric" autocapitalize="off" autocomplete="off" spellcheck="false" placeholder="Split into /26 (optional)">
+          </div>
+          <p class="input-hint">Try <strong>192.168.1.10/24</strong>, <strong>10.0.0.1 255.255.252.0</strong> or <strong>2001:db8::/48</strong>. Fill in the optional fields to check whether the subnet contains an address or another subnet, or to split it into smaller ones. Calculated in this page. Nothing is sent anywhere.</p>
           <div id="subnet-results" aria-live="polite"><div class="tool-status tool-status--empty">Enter an address and prefix to see its subnet.</div></div>
         </section>
       </div>

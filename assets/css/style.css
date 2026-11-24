@@ -1498,6 +1498,8 @@ input, select { font-family: inherit; color: inherit; }
 [data-theme="light"] .kv-item, [data-theme="light"] .code-block { background: rgba(0,0,0,0.02); }
 .kv-item dt { font-size: 11px; font-weight: 500; color: var(--text-muted); margin-bottom: 4px; }
 .kv-item dd { margin: 0; font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); overflow-wrap: anywhere; }
+.kv-list { list-style: none; padding: 0; }
+.kv-list code { font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; }
 .code-block {
   margin: 0; padding: 14px 16px; background: rgba(255,255,255,0.02); border: 1px solid var(--border);
   border-radius: var(--radius-xs); font-family: var(--font-mono); font-size: 12px; line-height: 1.6;
