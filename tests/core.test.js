@@ -1203,6 +1203,15 @@ test('inspectJwt keeps hostile claim text as data', () => {
   assert.ok(!Core.escapeHtml(result.claims[0].value).includes('<'));
 });
 
+test('inspectJwt treats claim names like constructor and __proto__ as plain data', () => {
+  const payload = JSON.parse('{"constructor":"c","toString":"t","__proto__":{"admin":true},"hasOwnProperty":1,"exp":%d}'.replace('%d', nowSeconds + 60));
+  const result = Core.inspectJwt(makeJwt({ alg: 'RS256' }, payload), NOW);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.claims.map((c) => c.label), ['constructor', 'toString', '__proto__', 'hasOwnProperty', 'Expires']);
+  assert.equal(result.claims.find((c) => c.key === 'constructor').value, 'c');
+  assert.equal(result.status, 'active');
+});
+
 test('describeDuration picks the largest whole unit', () => {
   assert.equal(Core.describeDuration(999), '1 second');
   assert.equal(Core.describeDuration(45000), '45 seconds');

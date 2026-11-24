@@ -36,6 +36,7 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 - A failed DNS lookup is reported as "could not look up" instead of "no record found".
 - Password generator options were unreachable by keyboard.
 - The freeipapi.com location fallback was blocked by the Content-Security-Policy because that API now redirects to free.freeipapi.com. The app calls the new host and the CSP allows it.
+- The JWT inspector threw on a token whose payload had a claim named like an object property (for example `constructor` or `toString`). Such claims now show as ordinary data.
 
 ## 2026-11-07
 
