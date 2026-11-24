@@ -14,8 +14,13 @@ concurrency:
 
 jobs:
   test:
+    name: test (node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -24,6 +29,9 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
       - name: Static checks, text lint and unit tests
         run: npm run check
+      - name: Coverage report for core.js
+        if: matrix.node == 24
+        run: npm run coverage >> "$GITHUB_STEP_SUMMARY"
