@@ -5,6 +5,7 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 ## [Unreleased]
 
 ### Added
+- The Pages deploy workflow retries the deploy step once after 30 seconds, because deploy-pages occasionally fails with "no artifacts found" right after the upload.
 - CI runs on Node 22 and 24 and writes a coverage summary for `core.js` to the job summary.
 - Subnet calculator: optional "compare with" field (is an address or subnet inside, around, the same as or apart from this one) and optional "split into /N" field that lists the smaller subnets (first 256 shown, with the real total). Both run in the page.
 - Subnet calculator: network, mask, wildcard, broadcast, usable range, size and address type for IPv4 (prefix or dotted mask, /31 and /32 handled) and IPv6 (BigInt math, RFC 5952 text). Runs in the page with no network request and is included in the exported report.
