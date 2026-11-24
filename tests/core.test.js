@@ -1116,6 +1116,29 @@ test('calculateSubnet explains bad input instead of guessing', () => {
   assert.match(error('1'.repeat(200)), /too long/);
 });
 
+test('calculateSubnet rejects malformed IPv6 text and non-contiguous masks', () => {
+  for (const bad of [':::/64', '1::2::3/64', '1:2:3:4:5:6:7:8:9/64', '1:2:3:4:5:6:7/64', ':1:2:3:4:5:6:7/64', '12345::/64', 'g::1/64', 'fe80::1%eth0/64', '[2001:db8::1]/64', '::1.2.3/64']) {
+    assert.equal(Core.calculateSubnet(bad).ok, false, bad);
+  }
+  for (const mask of ['255.0.255.0', '0.255.255.255', '255.255.255.1', '128.0.0.1']) {
+    const r = Core.calculateSubnet(`10.0.0.1 ${mask}`);
+    assert.equal(r.ok, false, mask);
+    assert.match(r.error, /not a valid subnet mask/);
+  }
+  assert.equal(Core.calculateSubnet('10.0.0.1 0.0.0.0').prefix, 0);
+  assert.equal(Core.calculateSubnet('10.0.0.1 255.255.255.255').prefix, 32);
+});
+
+test('calculateSubnet reads embedded IPv4 tails and notes long IPv6 prefixes', () => {
+  const mapped = Core.calculateSubnet('::ffff:10.1.2.3/128');
+  assert.equal(mapped.address, '::ffff:a01:203');
+  assert.equal(rowMap(mapped)['Address type'], 'IPv4-mapped');
+  assert.equal(Core.calculateSubnet('2001:db8::1/127').note, '');
+  assert.match(Core.calculateSubnet('2001:db8::1/96').note, /SLAAC/);
+  assert.equal(rowMap(Core.calculateSubnet('2001:db8::1/0'))['Total addresses'], '2^128');
+  assert.equal(Core.calculateSubnet('2001:db8::1/64').note, '');
+});
+
 // ------------------------------------------------------------
 // JWT inspector
 // ------------------------------------------------------------
