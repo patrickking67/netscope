@@ -114,7 +114,7 @@ More diagrams (components, the domain scan pipeline, the service worker decision
 | --- | --- |
 | Unit tests | 145 unit tests on Node's built-in runner, no test dependencies |
 | Coverage of `core.js` | 99% of lines, 89% of branches (`npm run coverage`). `app.js` is DOM wiring and is checked in a browser, not unit tested |
-| CI | `npm run check` on every push and pull request, Ubuntu, Node 24, read-only token ([ci.yml](.github/workflows/ci.yml)) |
+| CI | `npm run check` on every push and pull request, Ubuntu, Node 22 and 24 matrix, coverage summary, read-only token ([ci.yml](.github/workflows/ci.yml)) |
 | Security checks | Tests for CSP on all 3 pages, no inline script or handlers, SRI on CDN scripts, `connect-src` allowlist, no third-party request without a timeout |
 | Accessibility checks | Tests for skip link and `<main>` on every page, ARIA tabs, live result regions and names on icon-only controls. Contrast, focus rings and 375px layout were checked by hand |
 | Docs lint | The check fails if a documented test count is stale, a local asset link is broken, or committed text contains an em dash or emoji |
