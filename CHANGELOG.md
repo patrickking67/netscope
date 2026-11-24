@@ -34,6 +34,7 @@ All notable changes to NetScope are listed here. The format follows [Keep a Chan
 - On phones the Full Scan button collapses to an icon so the header no longer clips.
 
 ### Fixed
+- IPv4 addresses and masks with a leading zero in an octet (for example 010.0.0.1) are rejected everywhere, because many tools read them as octal. The subnet calculator says so instead of calling the address invalid.
 - Scanning a domain that does not exist now says so instead of grading missing SPF and DMARC as failures.
 - A failed DNS lookup is reported as "could not look up" instead of "no record found".
 - Password generator options were unreachable by keyboard.

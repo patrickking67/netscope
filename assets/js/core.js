@@ -525,7 +525,14 @@
   // ============================================================
   function isIPv4(value) {
     const parts = String(value).split('.');
-    return parts.length === 4 && parts.every((p) => /^\d{1,3}$/.test(p) && Number(p) <= 255);
+    // No leading zeros: inet_aton and many tools read 010 as octal 8, so the same text means different hosts.
+    return parts.length === 4 && parts.every((p) => /^(0|[1-9]\d{0,2})$/.test(p) && Number(p) <= 255);
+  }
+
+  /** True for a dotted quad that is only invalid because an octet has a leading zero, such as 010.0.0.1. */
+  function hasLeadingZeroOctet(value) {
+    const parts = String(value).split('.');
+    return parts.length === 4 && parts.every((p) => /^\d{1,3}$/.test(p) && Number(p) <= 255) && parts.some((p) => p.length > 1 && p[0] === '0');
   }
 
   function isIPv6(value) {
@@ -1096,6 +1103,12 @@
       [address, maskText] = spaced;
     } else if (spaced.length > 2) {
       return { ok: false, error: 'Enter one address and one prefix or mask' };
+    }
+
+    for (const part of [address, maskText, prefixText]) {
+      if (part && hasLeadingZeroOctet(part)) {
+        return { ok: false, error: `${part} has a leading zero in an octet. Some tools read that as octal, so write it without, for example 10.0.0.1` };
+      }
     }
 
     if (isIPv4(address)) {

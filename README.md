@@ -14,7 +14,7 @@
 <p align="center">
   <a href="https://github.com/patrickking67/netscope/actions/workflows/ci.yml"><img src="https://github.com/patrickking67/netscope/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license"></a>
-  <a href="tests/"><img src="https://img.shields.io/badge/tests-145_passing-brightgreen" alt="145 unit tests passing"></a>
+  <a href="tests/"><img src="https://img.shields.io/badge/tests-148_passing-brightgreen" alt="148 unit tests passing"></a>
   <a href="https://patrickking67.github.io/netscope/"><img src="https://img.shields.io/badge/demo-live-2563eb" alt="Live demo"></a>
 </p>
 
@@ -34,7 +34,7 @@
 ```bash
 git clone https://github.com/patrickking67/netscope.git
 cd netscope
-npm run check   # static checks, text lint and 145 unit tests. Nothing to install.
+npm run check   # static checks, text lint and 148 unit tests. Nothing to install.
 npm run serve   # http://localhost:4102
 ```
 
@@ -112,7 +112,7 @@ More diagrams (components, the domain scan pipeline, the service worker decision
 
 | Signal | Current state |
 | --- | --- |
-| Unit tests | 145 unit tests on Node's built-in runner, no test dependencies |
+| Unit tests | 148 unit tests on Node's built-in runner, no test dependencies |
 | Coverage of `core.js` | 99% of lines, 89% of branches (`npm run coverage`). `app.js` is DOM wiring and is checked in a browser, not unit tested |
 | CI | `npm run check` on every push and pull request, Ubuntu, Node 22 and 24 matrix, coverage summary, read-only token ([ci.yml](.github/workflows/ci.yml)) |
 | Security checks | Tests for CSP on all 3 pages, no inline script or handlers, SRI on CDN scripts, `connect-src` allowlist, no third-party request without a timeout |

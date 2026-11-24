@@ -1226,6 +1226,44 @@ test('inspectJwt keeps hostile claim text as data', () => {
   assert.ok(!Core.escapeHtml(result.claims[0].value).includes('<'));
 });
 
+test('IPv4 text with a leading zero in an octet is rejected everywhere it is parsed', () => {
+  // 010 is octal 8 to inet_aton and many tools, so the same text can name two hosts.
+  for (const bad of ['010.0.0.1', '10.00.0.1', '10.0.0.001', '192.168.01.1', '00.0.0.0', '1.2.3.04']) {
+    assert.equal(Core.isIPv4(bad), false, bad);
+    assert.equal(Core.isIpAddress(bad), false, bad);
+    assert.equal(Core.isPrivateIPv4(bad), false, bad);
+    assert.equal(Core.ipv6ToBigInt(`::ffff:${bad}`), null, bad);
+  }
+  for (const good of ['0.0.0.0', '10.0.0.1', '100.200.255.0', '192.168.1.10']) {
+    assert.equal(Core.isIPv4(good), true, good);
+    assert.equal(Core.isIpAddress(good), true, good);
+  }
+  assert.ok(Core.ipv6ToBigInt('::ffff:10.0.0.1') !== null);
+  assert.equal(Core.isIpAddress('::ffff:010.0.0.1'), false);
+});
+
+test('the subnet calculator explains a leading zero instead of guessing', () => {
+  for (const input of ['010.0.0.1/24', '10.0.0.001/24', '10.0.0.1 255.255.255.000', '10.0.0.1/255.255.0.00', '192.168.01.1 255.255.255.0']) {
+    const r = Core.calculateSubnet(input);
+    assert.equal(r.ok, false, input);
+    assert.match(r.error, /leading zero in an octet/, input);
+  }
+  assert.match(Core.calculateSubnet('010.0.0.1/24').error, /^010\.0\.0\.1 has a leading zero/);
+  // Comparing and splitting go through the same parser.
+  assert.match(Core.compareSubnets('10.0.0.0/24', '10.0.0.05').error, /leading zero/);
+  assert.match(Core.compareSubnets('010.0.0.0/24', '10.0.0.5').error, /leading zero/);
+  assert.match(Core.splitSubnet('010.0.0.0/24', '26').error, /leading zero/);
+  // A prefix length is not an octet and may be written with or without a leading zero rule of its own.
+  assert.equal(Core.calculateSubnet('10.0.0.1/24').ok, true);
+  assert.equal(Core.calculateSubnet('10.0.0.1 255.255.255.0').ok, true);
+});
+
+test('classifyIceCandidates drops candidates whose address has a leading zero', () => {
+  const candidate = (ip, type) => `candidate:1 1 udp 2113937151 ${ip} 54321 typ ${type} generation 0`;
+  const result = Core.classifyIceCandidates([candidate('010.1.2.3', 'host'), candidate('203.0.113.7', 'srflx'), candidate('192.168.001.5', 'host')]);
+  assert.deepEqual(result, { localAddresses: [], publicAddresses: ['203.0.113.7'] });
+});
+
 test('compareSubnets says whether one subnet holds another, an address, or nothing in common', () => {
   const rel = (a, b) => Core.compareSubnets(a, b).relation;
   assert.equal(rel('10.0.0.0/8', '10.1.2.3'), 'contains');
