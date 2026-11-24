@@ -1226,6 +1226,48 @@ test('inspectJwt keeps hostile claim text as data', () => {
   assert.ok(!Core.escapeHtml(result.claims[0].value).includes('<'));
 });
 
+test('compareSubnets says whether one subnet holds another, an address, or nothing in common', () => {
+  const rel = (a, b) => Core.compareSubnets(a, b).relation;
+  assert.equal(rel('10.0.0.0/8', '10.1.2.3'), 'contains');
+  assert.equal(rel('10.1.2.3/24', '10.0.0.0/8'), 'inside');
+  assert.equal(rel('10.0.0.7/24', '10.0.0.0 255.255.255.0'), 'same');
+  assert.equal(rel('10.0.0.0/24', '10.0.1.0/24'), 'disjoint');
+  assert.equal(rel('10.0.0.0/24', '10.0.0.255'), 'contains');
+  assert.equal(rel('10.0.0.0/24', '10.0.1.0'), 'disjoint');
+  assert.equal(rel('2001:db8::/32', '2001:db8:1::5'), 'contains');
+  assert.equal(rel('::/0', '2001:db8::1/64'), 'contains');
+  assert.match(Core.compareSubnets('10.0.0.0/8', '10.1.2.3').message, /10\.0\.0\.0\/8 contains 10\.1\.2\.3\/32/);
+  assert.match(Core.compareSubnets('10.0.0.0/24', '2001:db8::1').error, /not one of each/);
+  assert.match(Core.compareSubnets('10.0.0.0/24', 'nope').error, /not a valid/);
+  assert.equal(Core.compareSubnets('nope/24', '10.0.0.1').ok, false);
+});
+
+test('splitSubnet lists equal smaller subnets and caps very large splits', () => {
+  assert.deepEqual(Core.splitSubnet('192.168.0.77/24', '26').cidrs, ['192.168.0.0/26', '192.168.0.64/26', '192.168.0.128/26', '192.168.0.192/26']);
+  assert.equal(Core.splitSubnet('192.168.0.0/24', 26).total, '4');
+  assert.deepEqual(Core.splitSubnet('255.255.255.254/31', '32').cidrs, ['255.255.255.254/32', '255.255.255.255/32']);
+  const v6 = Core.splitSubnet('2001:db8::/32', '34');
+  assert.deepEqual(v6.cidrs, ['2001:db8::/34', '2001:db8:4000::/34', '2001:db8:8000::/34', '2001:db8:c000::/34']);
+  const big = Core.splitSubnet('10.0.0.0/8', '32');
+  assert.equal(big.cidrs.length, Core.SPLIT_LIMIT);
+  assert.equal(big.total, '16,777,216');
+  assert.equal(big.truncated, true);
+  assert.equal(Core.splitSubnet('2001:db8::/32', '64').total, '4,294,967,296');
+  assert.equal(Core.splitSubnet('10.0.0.0/30', '32').truncated, false);
+});
+
+test('splitSubnet refuses prefixes that do not make smaller subnets', () => {
+  const error = (input, prefix) => { const r = Core.splitSubnet(input, prefix); assert.equal(r.ok, false); return r.error; };
+  assert.match(error('10.0.0.0/24', '24'), /longer than \/24/);
+  assert.match(error('10.0.0.0/24', '8'), /longer than \/24/);
+  assert.match(error('10.0.0.0/24', '33'), /longer than \/32/);
+  assert.match(error('10.0.0.0/24', ''), /whole number/);
+  assert.match(error('10.0.0.0/24', '2.5'), /whole number/);
+  assert.match(error('10.0.0.0/24', null), /whole number/);
+  assert.match(error('bad', '26'), /not a valid/);
+  assert.match(error('2001:db8::/64', '129'), /longer than \/128/);
+});
+
 test('inspectJwt treats claim names like constructor and __proto__ as plain data', () => {
   const payload = JSON.parse('{"constructor":"c","toString":"t","__proto__":{"admin":true},"hasOwnProperty":1,"exp":%d}'.replace('%d', nowSeconds + 60));
   const result = Core.inspectJwt(makeJwt({ alg: 'RS256' }, payload), NOW);
